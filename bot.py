@@ -112,24 +112,6 @@ SPITZNAMEN_LISTE = [
     "Süß-Sauer-Boss 🍯",
 ]
 
-# Spitznamen im Server tatsächlich ÄNDERN (!spitzname)
-@bot.command(name="spitzname", aliases=["nickname", "taufe"])
-@commands.has_permissions(manage_nicknames=True)
-async def spitzname(ctx, member: discord.Member = None):
-    """Nutzung: !spitzname oder !spitzname @User"""
-    target = member if member else ctx.author
-    neuer_name = random.choice(SPITZNAMEN_LISTE)
-
-    try:
-        await target.edit(nick=neuer_name)
-        await ctx.send(
-            f"🍟 **Feierliche Fritten-Taufe!** {target.mention} heißt ab sofort offiziell: **{neuer_name}**!"
-        )
-    except discord.Forbidden:
-        await ctx.send(
-            f"😅 Ich wollte {target.mention} zu **'{neuer_name}'** umbenennen, aber mir fehlen die Rechte dazu (oder der User hat eine höhere Rolle als ich)!"
-        )
-
 # Spitznamen-Command
 @bot.command(name="spitzname")
 @commands.has_permissions(manage_nicknames=True)
