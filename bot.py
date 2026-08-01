@@ -1,5 +1,6 @@
 import os
 import random
+import datetime
 import discord
 from discord.ext import commands
 from flask import Flask
@@ -300,7 +301,48 @@ async def matsch(ctx, member: discord.Member = None):
         status = "ABSOLUTER MATSCH! Sofort ins Bett legen. 🛑"
     await ctx.send(f"🥔 **Matsch-Analyse für {target.mention}:** {matsch_level}% – *{status}*")
 
+# USER IN DIE FRITTEUSE SCHICKEN (TIMEOUT)
+@bot.command(name="fritteuse", aliases=["timeout", "auszeit", "frittieren"])
+@commands.has_permissions(moderate_members=True) # Nur Admins/Moderatoren dürfen das
+async def fritteuse(ctx, member: discord.Member, minuten: int = 5, *, grund: str = "Zu salzig gewesen"):
+    """Nutzung: !fritteuse @User [Minuten] [Grund]
+    Beispiel: !fritteuse @NervigerUser 10 Spamming
+    """
+    if member == ctx.author:
+        await ctx.send("🍟 Du kannst dich doch nicht selbst frittieren, du Knusperkopf!")
+        return
 
+    # Zeitdauer umrechnen
+    dauer = discord.utils.utcnow() + datetime.timedelta(minutes=minuten)
+
+    try:
+        # Führt das Discord-Timeout aus
+        await member.timeout(dauer, reason=grund)
+        await ctx.send(
+            f"🔥 **AB IN DIE FRITTEUSE!** {member.mention} wurde für **{minuten} Minute(n)** auf 180°C runtergekühlt!\n"
+            f"💬 *Grund:* {grund}\n"
+            f"🤫 *Das war's erst mal, ab in die Fritten mit dir!*"
+        )
+    except discord.Forbidden:
+        await ctx.send("❌ Mir fehlen die Rechte! Meine Bot-Rolle muss höher liegen als die des Ziel-Users.")
+    except Exception as e:
+        await ctx.send(f"❌ Fehler beim Frittieren: {e}")
+
+# USER VORZEITIG AUS DER FRITTEUSE HOLE (TIMEOUT ENTFERNEN)
+@bot.command(name="entfrittieren", aliases=["unmute", "rausholen"])
+@commands.has_permissions(moderate_members=True)
+async def entfrittieren(ctx, member: discord.Member):
+    """Nutzung: !entfrittieren @User"""
+    try:
+        # Timeout aufheben (None setzt die Zeit zurück)
+        await member.timeout(None)
+        await ctx.send(
+            f"🍟 **Frisch abgetropft!** {member.mention} wurde vorzeitig aus der Fritteuse geholt und darf wieder mitreden."
+        )
+    except discord.Forbidden:
+        await ctx.send("❌ Mir fehlen die Rechte dafür!")
+    except Exception as e:
+        await ctx.send(f"❌ Fehler: {e}")
 # ==========================================
 # BOT STARTEN
 # ==========================================
