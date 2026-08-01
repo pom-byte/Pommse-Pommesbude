@@ -10,10 +10,8 @@ from dotenv import load_dotenv
 # 1. SETUP FOR LOCAL PC & RENDER SERVER
 # ==========================================
 
-# Lädt das Token aus der .env-Datei (auf deinem PC)
 load_dotenv()
 
-# Webserver starten, damit Render den Bot nicht stoppt
 app = Flask('')
 
 @app.route('/')
@@ -33,7 +31,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True  # Erlaubt das Ändern von Spitznamen & Rollen
 
-# Bot-Instanz erstellen mit dem Präfix "!"
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
@@ -43,10 +40,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(
-        f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})"
-    )
-    # Status auf "Schaut zu bei wie du tiltest 🧂" gesetzt
+    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -62,23 +56,19 @@ async def on_message(message):
 
     msg = message.content.lower()
 
-    # Ketchup-Gag: Reagiert, wenn jemand "pommes" schreibt
     if "pommes" in msg:
         await message.add_reaction("🍟")
         await message.add_reaction("🥫")
 
-    # Reagiert auf "hunger"
     if "hunger" in msg:
         await message.channel.send("Did somebody say... **POMMES**? 🍟")
 
-    # Reagiert auf "tilt" oder "rage"
     if "tilt" in msg or "rage" in msg:
         await message.add_reaction("🧂")
         await message.channel.send(
             f"⚠️ *Salzgehalt im Chat steigt...* {message.author.mention}"
         )
 
-    # Wenn Pommse im Chat erwähnt wird, neckt er zurück
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         konter = [
             "Was willst du denn, du halbgare Fritte? 🍟",
@@ -88,18 +78,15 @@ async def on_message(message):
         ]
         await message.channel.send(random.choice(konter))
 
-    # Stellt sicher, dass die Befehle weiter unten verarbeitet werden
     await bot.process_commands(message)
 
-@bot.event
-async def on_ready():
-    print(f"✅ Erfogreich eingeloggt als {bot.user}!")
-    
+
 # ==========================================
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
 SPITZNAMEN_LISTE = [
+    "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
     "Der Knusprige Carry 🔥",
@@ -112,26 +99,24 @@ SPITZNAMEN_LISTE = [
     "Süß-Sauer-Boss 🍯",
 ]
 
-# Spitznamen-Command
-@bot.command(name="spitzname")
+# Spitznamen-Command (Ändert den Server-Namen)
+@bot.command(name="spitzname", aliases=["nickname", "taufe"])
 @commands.has_permissions(manage_nicknames=True)
 async def spitzname(ctx, member: discord.Member = None):
-    # Falls kein Member angegeben wurde, nimm den Ausführer
     target = member if member else ctx.author
-    neuer_name = "curly fries"
+    neuer_name = random.choice(SPITZNAMEN_LISTE)
 
     try:
         await target.edit(nick=neuer_name)
-        await ctx.send(f"🍟 **{target.mention}** heißt ab jetzt offiziell **{neuer_name}**!")
+        await ctx.send(f"🍟 **Feierliche Fritten-Taufe!** {target.mention} heißt ab sofort offiziell: **{neuer_name}**!")
     except discord.Forbidden:
         await ctx.send("❌ Mir fehlen die Rechte! Meine Rolle muss höher liegen als die der Person und das Recht 'Spitznamen verwalten' haben.")
     except Exception as e:
         await ctx.send(f"❌ Fehler: {e}")
         
-# Spitznamen einfach nur im Chat RUFEN (!rufname)
+# Spitznamen einfach nur im Chat RUFEN
 @bot.command(name="rufname", aliases=["ruf", "spitznamen"])
 async def rufname(ctx, member: discord.Member = None):
-    """Nutzung: !rufname oder !rufname @User"""
     target = member.mention if member else ctx.author.mention
     vorsatz = [
         "Für mich bist und bleibst du einfach",
@@ -145,10 +130,9 @@ async def rufname(ctx, member: discord.Member = None):
 
 # DIE STAMMGAST-VERGABE (Rollen-Command)
 @bot.command(name="stammgast")
-@commands.has_permissions(administrator=True)  # Nur Admins können das triggern
+@commands.has_permissions(administrator=True)
 async def stammgast(ctx, member: discord.Member):
-    """Nutzung: !stammgast @User"""
-    role_name = "Stammgast"  # Rolle muss exakt so auf dem Server heißen
+    role_name = "Stammgast"
     role = discord.utils.get(ctx.guild.roles, name=role_name)
 
     if not role:
@@ -169,16 +153,12 @@ async def stammgast(ctx, member: discord.Member):
 
 
 # ==========================================
-# UNNÖTIGE / WITZIGE SPECIAL-COMMANDS
+# SPECIAL-COMMANDS
 # ==========================================
 
-# DAS FETT-ORAKEL
 @bot.command(name="fett")
 async def fett(ctx, *, thema: str = None):
-    """Nutzung: !fett oder !fett <Thema>"""
     prozent = random.randint(12, 99)
-    
-    # Wenn kein Thema angegeben wurde, analysieren wir den User
     ziel = thema if thema else f"{ctx.author.mention}"
     
     await ctx.send(
@@ -187,10 +167,8 @@ async def fett(ctx, *, thema: str = None):
         f"{'Absolut ungesund, aber geil! 🔥' if prozent > 50 else 'Geht eigentlich, wie eine leichte Gemüsepommes. 🥦'}"
     )
 
-# Fritteusen-Roulette
 @bot.command(name="roulette")
 async def roulette(ctx):
-    """Nutzung: !roulette"""
     ergebnisse = [
         "🍟 **Perfekt!** Du hast eine goldbraune, knusprige Riffelpommse gezogen. +50 Knusper-Punkte!",
         "🥤 **Glück gehabt!** Nur eine lauwarme Pommes aber mit extra Mayo.",
@@ -202,11 +180,8 @@ async def roulette(ctx):
         f"🎰 {ctx.author.mention} dreht am Fritteusen-Rad...\n\n{random.choice(ergebnisse)}"
     )
 
-
-# Fritten-Horoskop
 @bot.command(name="horoskop", aliases=["schicksal"])
 async def horoskop(ctx):
-    """Nutzung: !horoskop"""
     horoskope = [
         "Heute gelingt dir jeder Headshot – du bist knackiger unterwegs als frische Fritten nach der Nachtschicht!",
         "Vorsicht heute: Dein Aim wird so schwammig sein wie eine Pommes, die 4 Stunden in der Papiertüte lag.",
@@ -218,40 +193,15 @@ async def horoskop(ctx):
         f"🔮 **Fritten-Horoskop für {ctx.author.mention}:**\n_{random.choice(horoskope)}_"
     )
 
-
-# Chef-Rezept
 @bot.command(name="rezept")
 async def rezept(ctx):
-    """Nutzung: !rezept"""
-    zot1 = [
-        "Süßkartoffel-Fritten",
-        "Gitterkartoffeln",
-        "Klassische Pommes",
-        "Chili-Cheese-Fries",
-        "Wellenschnitt-Fritten",
-    ]
-    zot2 = [
-        "mit Nutella",
-        "getunkt in Energy-Drink",
-        "mit Extra-Knoblauch-Mayo",
-        "überstreut mit Gummibärchen",
-        "überbacken mit Schmelzkäse",
-    ]
-    zot3 = [
-        "und einer Prise Speisesalz.",
-        "und warmem Maggi.",
-        "garniert mit Pfefferminz-Eis.",
-        "serviert in einer Zeitung von gestern.",
-    ]
+    zot1 = ["Süßkartoffel-Fritten", "Gitterkartoffeln", "Klassische Pommes", "Chili-Cheese-Fries", "Wellenschnitt-Fritten"]
+    zot2 = ["mit Nutella", "getunkt in Energy-Drink", "mit Extra-Knoblauch-Mayo", "überstreut mit Gummibärchen", "überbakeen mit Schmelzkäse"]
+    zot3 = ["und einer Prise Speisesalz.", "und warmem Maggi.", "garniert mit Pfefferminz-Eis.", "serviert in einer Zeitung von gestern."]
 
     await ctx.send(
         f"👨‍🍳 **Pommse' Chef-Empfehlung:**\n{random.choice(zot1)} {random.choice(zot2)} {random.choice(zot3)}"
     )
-
-
-# ==========================================
-# BASICS & ORIGINAL-BEFEHLE
-# ==========================================
 
 @bot.command(name="necken", aliases=["neck", "beleidige"])
 async def necken(ctx, member: discord.Member = None):
@@ -266,11 +216,9 @@ async def necken(ctx, member: discord.Member = None):
     ]
     await ctx.send(f"🍟 {target} – {random.choice(neck_sprueche)}")
 
-
 @bot.command(name="ping")
 async def ping(ctx):
     await ctx.send("Pong! 🏓")
-
 
 @bot.command(name="kater")
 async def kater(ctx):
@@ -281,10 +229,8 @@ async def kater(ctx):
     ]
     await ctx.send(f"🤕 {ctx.author.mention} – {random.choice(kater_sprueche)}")
 
-
 @bot.command(name="entscheide")
 async def entscheide(ctx, *, choices: str):
-    """Nutzung: !entscheide Valorant oder PUBG"""
     options = choices.split(" oder ")
     if len(options) < 2:
         await ctx.send(
@@ -300,7 +246,6 @@ async def entscheide(ctx, *, choices: str):
     ]
     await ctx.send(f"🍟 {random.choice(begruendungen)}")
 
-
 @bot.command(name="salz")
 async def salz(ctx, member: discord.Member = None):
     target = member.mention if member else "Jemand"
@@ -310,22 +255,14 @@ async def salz(ctx, member: discord.Member = None):
     ]
     await ctx.send(f"🧂 {random.choice(salz_sprueche)}")
 
-
 @bot.command(name="feier")
 async def feier(ctx):
-    titel = [
-        "Die Ketchup-Kanone 🥫",
-        "Der Frittier-Meister 🔥",
-        "Der knusprige Carry 🍟",
-        "Der kalte Erdäpfel 🥔",
-        "Die Mayo-Majestät 👑",
-    ]
+    titel = ["Die Ketchup-Kanone 🥫", "Der Frittier-Meister 🔥", "Der knusprige Carry 🍟", "Der kalte Erdäpfel 🥔", "Die Mayo-Majestät 👑"]
     await ctx.send(
         f"🎉 **GG WP! FEIERABEND!** 🎉\n"
         f"Pommse schmeißt eine virtuelle Tüte Fritten in die Runde! 🍟✨\n"
         f"MVP der Runde ({ctx.author.mention}) erhält hiermit den Titel: **{random.choice(titel)}**"
     )
-
 
 @bot.command(name="soße")
 async def soße(ctx):
@@ -333,7 +270,6 @@ async def soße(ctx):
     await ctx.send(
         f"🧪 Analyse für {ctx.author.mention}:\nDu bestehst heute zu **{random.randint(1, 100)}%** aus **{random.choice(soßen)}**!"
     )
-
 
 @bot.command(name="quiz")
 async def quiz(ctx):
@@ -349,7 +285,6 @@ async def quiz(ctx):
     )
     embed.set_footer(text="Die einzig richtige Antwort ist immer B. Vertrau mir.")
     await ctx.send(embed=embed)
-
 
 @bot.command(name="matsch")
 async def matsch(ctx, member: discord.Member = None):
@@ -369,15 +304,7 @@ async def matsch(ctx, member: discord.Member = None):
 # ==========================================
 # BOT STARTEN
 # ==========================================
-import os
-from dotenv import load_dotenv
-
-load_dotenv() # Liest deine .env-Datei ein
-
-# Hier wählst du aus, welchen Token-Namen der Code suchen soll:
-TOKEN = os.getenv("HAUPTBOT_DISCORD_TOKEN") 
-
-
+TOKEN = os.getenv("HAUPTBOT_DISCORD_TOKEN")
 
 if TOKEN:
     bot.run(TOKEN)
