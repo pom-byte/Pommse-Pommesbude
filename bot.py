@@ -118,7 +118,8 @@ async def on_message(message):
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
-SPITZNAMEN_LISTE = [
+# SPITZNAMEN_LISTE = 
+[
     "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
