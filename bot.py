@@ -523,21 +523,27 @@ async def cheat(ctx, anzahl: int, member: discord.Member = None):
     await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat soeben **{anzahl} Punkte** bekommen!\n*(Kontostand: {neuer_stand} Knusper-Punkte)* 🛢️✨")
 
 
-@bot.command(name="shop")
-async def shop(ctx):
+# ==========================================
+# KNUSPER-MENÜ & DIPP-SYSTEM (SHOP)
+# ==========================================
+
+@bot.command(name="menue", aliases=["shop", "karte"])
+async def menue(ctx):
+    """Zeigt die Knusper-Speisekarte an"""
     embed = discord.Embed(
-        title="🛒 Pommse' Knusper-Shop",
-        description="Gib deine hart erarbeiteten Punkte für Belohnungen aus!",
+        title="🍟 Pommse' Fritten-Speisekarte",
+        description="Tausche deine hart verdienten Knusper-Punkte gegen exklusive Menüs ein!",
         color=discord.Color.orange()
     )
-    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nSchreibe: `!kaufen stammgast`", inline=False)
-    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nSchreibe: `!kaufen titel`", inline=False)
-    embed.set_footer(text="Nutze !kaufen [item] um zuzuschlagen!")
+    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nBestelle mit: `!dippen stammgast`", inline=False)
+    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nBestelle mit: `!dippen titel`", inline=False)
+    embed.set_footer(text="Nutze !dippen [item] um zuzuschlagen!")
     await ctx.send(embed=embed)
 
 
-@bot.command(name="kaufen")
-async def kaufen(ctx, item: str):
+@bot.command(name="dippen", aliases=["bestellen", "kaufen"])
+async def dippen(ctx, item: str):
+    """Tausche Punkte gegen Menüs ein: !dippen stammgast"""
     item = item.lower()
     guthaben = get_punkte(ctx.author.id)
     
@@ -550,12 +556,12 @@ async def kaufen(ctx, item: str):
         role_name = "Stammgast"
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if not role:
-            await ctx.send(f"⚠️ Die Rolle '{role_name}' existiert auf dem Server nicht.")
+            await ctx.send(f"⚠️ Die Rolle '{role_name}' existiert auf dem Server nicht. Leg sie erst an!")
             return
             
         add_punkte(ctx.author.id, -preis)
         await ctx.author.add_roles(role)
-        await ctx.send(f"🎉 Glückwunsch {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte gegönnt! 👑🍟")
+        await ctx.send(f"🎉 Lecker, {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte gegönnt und bist jetzt fester Bestandteil der Fritteuse! 👑🍟")
         
     elif item == "titel":
         preis = 200
@@ -567,13 +573,11 @@ async def kaufen(ctx, item: str):
         neuer_titel = "Die Ehren-Fritte 🍟👑"
         try:
             await ctx.author.edit(nick=neuer_titel)
-            await ctx.send(f"✨ {ctx.author.mention} hat sich offiziell in **{neuer_titel}** umgetauft!")
+            await ctx.send(f"✨ {ctx.author.mention} hat sich erfolgreich in **{neuer_titel}** dippen lassen!")
         except Exception:
-            await ctx.send(f"🎉 Punkte abgezogen! (Konnte Spitzname wegen Admin-Rechten nicht ändern, aber Ehren-Status ist gesichert!)")
+            await ctx.send(f"🎉 Punkte abgezogen! (Konnte deinen Spitznamen wegen Admin-Rechten leider nicht ändern, aber der Status gehört dir!)")
     else:
-        await ctx.send("❌ Dieses Item gibt es nicht im Shop! Tippe `!shop` um das Angebot zu sehen.")
-
-
+        await ctx.send("❌ Das steht nicht auf der Speisekarte! Tippe `!menue`, um das Angebot zu sehen.")
 # ==========================================
 # BOT STARTEN
 # ==========================================
