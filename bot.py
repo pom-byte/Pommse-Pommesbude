@@ -41,7 +41,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})")
+    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt as {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -157,7 +157,6 @@ async def stammgast(ctx, member: discord.Member):
 # SPECIAL-COMMANDS
 # ==========================================
 
-
 @bot.command(name="orakel", aliases=["frage", "8ball"])
 async def orakel(ctx, *, frage: str = None):
     if not frage:
@@ -238,7 +237,6 @@ async def necken(ctx, member: discord.Member = None):
         "Na, wieder mal im falschen Fett gebadet? 🧼🛢️",
         "Du bist so durchgeschwitzt, du schmeckst schon nach Rapsöl!",
         "Nicht mal die Möwen am Kiosk würden dich wegpicken! 🕊️",
-        # NEUE CHOP-SPRÜCHE 🍟🔥
         "Uiuiui, da ist aber jemand ordentlich versalzen heute! 🧂😳",
         "Oh oh... da denkt wohl jemand, er wäre eine edle Süßkartoffel! 🍠✨",
         "Du bist doch maximal 'ne Riffelfritte auf Sparflamme! 📉",
@@ -389,7 +387,7 @@ async def fritteuse(ctx, member: discord.Member, minuten: int = 5, *, grund: str
     except Exception as e:
         await ctx.send(f"❌ Fehler beim Frittieren: {e}")
 
-# USER VORZEITIG AUS DER FRITTEUSE HOLE (TIMEOUT ENTFERNEN)
+# USER VORZEITIG AUS DER FRITTEUSE HOLEN (TIMEOUT ENTFERNEN)
 @bot.command(name="entfrittieren", aliases=["unmute", "rausholen"])
 @commands.has_permissions(moderate_members=True)
 async def entfrittieren(ctx, member: discord.Member):
