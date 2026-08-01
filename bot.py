@@ -481,6 +481,246 @@ async def entfrittieren(ctx, member: discord.Member):
     except Exception as e:
         await ctx.send(f"❌ Fehler: {e}")
 
+
+# ==========================================
+# KNUSPER-SHOP & BONUS SYSTEME
+# ==========================================
+
+@bot.command(name="daily")
+async def daily(ctx):
+    """Hol dir deine tägliche Fritten-Ration ab!"""
+    conn = sqlite3.connect("knusper.db")
+    cursor = conn.cursor()
+    
+    # Prüfen, wann der User das letzte Mal !daily gemacht hat
+    cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id INTEGER PRIMARY KEY, last_daily TEXT)")
+    cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = ?", (ctx.author.id,))
+    result = cursor.fetchone()
+    
+    heute = datetime.date.today().isoformat()
+    
+    if result and result[0] == heute:
+        conn.close()
+        await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
+        return
+        
+    # Punkte gutschreiben (+50 Punkte)
+    add_punkte(ctx.author.id, 50)
+    
+    # Datum aktualisieren
+    cursor.execute("INSERT OR REPLACE INTO user_daily (user_id, last_daily) VALUES (?, ?)", (ctx.author.id, heute))
+    conn.commit()
+    conn.close()
+    
+    gesammt = get_punkte(ctx.author.id)
+    await ctx.send(f"🎉 **Tägliche Fritten-Ration abgeholt!** {ctx.author.mention} bekommt **+50 Knusper-Punkte**!\n*(Neuer Kontostand: {gesammt} Punkte)*")
+
+
+@bot.command(name="give", aliases=["trinkgeld", "schenken"])
+async def give(ctx, member: discord.Member, anzahl: int):
+    """Schenke einem anderen User Knusper-Punkte: !give @User 50"""
+    if member == ctx.author:
+        await ctx.send("🍟 Du kannst dir doch nicht selbst Punkte schenken, du Schlawiner!")
+        return
+        
+    if anzahl <= 0:
+        await ctx.send("🍟 Du musst schon eine positive Anzahl an Punkten verschenken wollen!")
+        return
+        
+    sender_punkte = get_punkte(ctx.author.id)
+    if sender_punkte < anzahl:
+        await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_punkte} Punkte)")
+        return
+        
+    # Punkte abziehen und dem anderen geben
+    add_punkte(ctx.author.id, -anzahl)
+    add_punkte(member.id, anzahl)
+    
+    await ctx.send(f"💸 {ctx.author.mention} hat **{anzahl} Knusper-Punkte** an {member.mention} rüberschoben! Stabil! 🤝🍟")
+
+
+@bot.command(name="cheat", aliases=["adminpunkte", "fabian"])
+@commands.has_permissions(administrator=True)
+async def cheat(ctx, anzahl: int, member: discord.Member = None):
+    """Admin-Befehl: Dir selbst oder anderen Punkte zuschustern!"""
+    target = member if member else ctx.author
+    add_punkte(target.id, anzahl)
+    neuer_stand = get_punkte(target.id)
+    await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat soeben **{anzahl} Punkte** bekommen!\n*(Kontostand: {neuer_stand} Knusper-Punkte)* 🛢️✨")
+
+
+@bot.command(name="shop")
+async def shop(ctx):
+    """Zeigt den Knusper-Shop an"""
+    embed = discord.Embed(
+        title="🛒 Pommse' Knusper-Shop",
+        description="Gib deine hart erarbeiteten Punkte für Belohnungen aus!",
+        color=discord.Color.orange()
+    )
+    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nSchreibe: `!kaufen stammgast`", inline=False)
+    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nSchreibe: `!kaufen titel`", inline=False)
+    embed.set_footer(text="Nutze !kaufen [item] um zuzuschlagen!")
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="kaufen")
+async def kaufen(ctx, item: str):
+    """Kaufe Items aus dem Shop: !kaufen stammgast"""
+    item = item.lower()
+    guthaben = get_punkte(ctx.author.id)
+    
+    if item == "stammgast":
+        preis = 500
+        if guthaben < preis:
+            await ctx.send(f"❌ Zu arm für frittiertes Gold! Du hast {guthaben} Punkte, brauchst aber {preis}.")
+            return
+            
+        role_name = "Stammgast"
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
+        if not role:
+            await ctx.send(f"⚠️ Die Rolle '{role_name}' existiert auf dem Server nicht.")
+            return
+            
+        add_punkte(ctx.author.id, -preis)
+        await ctx.author.add_roles(role)
+        await ctx.send(f"🎉 Glückwunsch {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte gegönnt! 👑🍟")
+        
+    elif item == "titel":
+        preis = 200
+        if guthaben < preis:
+            await ctx.send(f"❌ Dafür reicht dein Kleingeld nicht! Du hast {guthaben} Punkte (Brauchst {preis}).")
+            return
+            
+        add_punkte(ctx.author.id, -preis)
+        neuer_titel = "Die Ehren-Fritte 🍟👑"
+        try:
+            await ctx.author.edit(nick=neuer_titel)
+            await ctx.send(f"✨ {ctx.author.mention} hat sich offiziell in **{neuer_titel}** umgetauft!")
+        except Exception:
+            await ctx.send(f"🎉 Punkte abgezogen! (Konnte Spitzname wegen Admin-Rechten nicht ändern, aber Ehren-Status ist gesichert!)")
+    else:
+        await ctx.send("❌ Dieses Item gibt es nicht im Shop! Tippe `!shop` um das Angebot zu sehen.")
+        
+# ==========================================
+# KNUSPER-SHOP & BONUS SYSTEME
+# ==========================================
+
+@bot.command(name="daily")
+async def daily(ctx):
+    """Hol dir deine tägliche Fritten-Ration ab!"""
+    conn = sqlite3.connect("knusper.db")
+    cursor = conn.cursor()
+    
+    # Prüfen, wann der User das letzte Mal !daily gemacht hat
+    cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id INTEGER PRIMARY KEY, last_daily TEXT)")
+    cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = ?", (ctx.author.id,))
+    result = cursor.fetchone()
+    
+    heute = datetime.date.today().isoformat()
+    
+    if result and result[0] == heute:
+        conn.close()
+        await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
+        return
+        
+    # Punkte gutschreiben (+50 Punkte)
+    add_punkte(ctx.author.id, 50)
+    
+    # Datum aktualisieren
+    cursor.execute("INSERT OR REPLACE INTO user_daily (user_id, last_daily) VALUES (?, ?)", (ctx.author.id, heute))
+    conn.commit()
+    conn.close()
+    
+    gesammt = get_punkte(ctx.author.id)
+    await ctx.send(f"🎉 **Tägliche Fritten-Ration abgeholt!** {ctx.author.mention} bekommt **+50 Knusper-Punkte**!\n*(Neuer Kontostand: {gesammt} Punkte)*")
+
+
+@bot.command(name="give", aliases=["trinkgeld", "schenken"])
+async def give(ctx, member: discord.Member, anzahl: int):
+    """Schenke einem anderen User Knusper-Punkte: !give @User 50"""
+    if member == ctx.author:
+        await ctx.send("🍟 Du kannst dir doch nicht selbst Punkte schenken, du Schlawiner!")
+        return
+        
+    if anzahl <= 0:
+        await ctx.send("🍟 Du musst schon eine positive Anzahl an Punkten verschenken wollen!")
+        return
+        
+    sender_punkte = get_punkte(ctx.author.id)
+    if sender_punkte < anzahl:
+        await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_punkte} Punkte)")
+        return
+        
+    # Punkte abziehen und dem anderen geben
+    add_punkte(ctx.author.id, -anzahl)
+    add_punkte(member.id, anzahl)
+    
+    await ctx.send(f"💸 {ctx.author.mention} hat **{anzahl} Knusper-Punkte** an {member.mention} rüberschoben! Stabil! 🤝🍟")
+
+
+@bot.command(name="cheat", aliases=["adminpunkte", "fabian"])
+@commands.has_permissions(administrator=True)
+async def cheat(ctx, anzahl: int, member: discord.Member = None):
+    """Admin-Befehl: Dir selbst oder anderen Punkte zuschustern!"""
+    target = member if member else ctx.author
+    add_punkte(target.id, anzahl)
+    neuer_stand = get_punkte(target.id)
+    await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat soeben **{anzahl} Punkte** bekommen!\n*(Kontostand: {neuer_stand} Knusper-Punkte)* 🛢️✨")
+
+
+@bot.command(name="shop")
+async def shop(ctx):
+    """Zeigt den Knusper-Shop an"""
+    embed = discord.Embed(
+        title="🛒 Pommse' Knusper-Shop",
+        description="Gib deine hart erarbeiteten Punkte für Belohnungen aus!",
+        color=discord.Color.orange()
+    )
+    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nSchreibe: `!kaufen stammgast`", inline=False)
+    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nSchreibe: `!kaufen titel`", inline=False)
+    embed.set_footer(text="Nutze !kaufen [item] um zuzuschlagen!")
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="kaufen")
+async def kaufen(ctx, item: str):
+    """Kaufe Items aus dem Shop: !kaufen stammgast"""
+    item = item.lower()
+    guthaben = get_punkte(ctx.author.id)
+    
+    if item == "stammgast":
+        preis = 500
+        if guthaben < preis:
+            await ctx.send(f"❌ Zu arm für frittiertes Gold! Du hast {guthaben} Punkte, brauchst aber {preis}.")
+            return
+            
+        role_name = "Stammgast"
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
+        if not role:
+            await ctx.send(f"⚠️ Die Rolle '{role_name}' existiert auf dem Server nicht.")
+            return
+            
+        add_punkte(ctx.author.id, -preis)
+        await ctx.author.add_roles(role)
+        await ctx.send(f"🎉 Glückwunsch {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte gegönnt! 👑🍟")
+        
+    elif item == "titel":
+        preis = 200
+        if guthaben < preis:
+            await ctx.send(f"❌ Dafür reicht dein Kleingeld nicht! Du hast {guthaben} Punkte (Brauchst {preis}).")
+            return
+            
+        add_punkte(ctx.author.id, -preis)
+        neuer_titel = "Die Ehren-Fritte 🍟👑"
+        try:
+            await ctx.author.edit(nick=neuer_titel)
+            await ctx.send(f"✨ {ctx.author.mention} hat sich offiziell in **{neuer_titel}** umgetauft!")
+        except Exception:
+            await ctx.send(f"🎉 Punkte abgezogen! (Konnte Spitzname wegen Admin-Rechten nicht ändern, aber Ehren-Status ist gesichert!)")
+    else:
+        await ctx.send("❌ Dieses Item gibt es nicht im Shop! Tippe `!shop` um das Angebot zu sehen.")
+        
+        
 # ==========================================
 # BOT STARTEN
 # ==========================================
