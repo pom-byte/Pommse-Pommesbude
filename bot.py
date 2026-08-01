@@ -538,6 +538,23 @@ async def kompliment(ctx, member: discord.Member = None):
     
     await ctx.send(random.choice(komplimente_liste))
     
+@bot.command(name="dippen", aliases=["hotti", "flirt"])
+async def dippen(ctx, member: discord.Member = None):
+    """Der ultimative Flirt- und Anziehungs-Befehl!"""
+    target = member.mention if member else ctx.author.mention
+    
+    flirt_sprueche = [
+        f"🔥 {target}, bist du eine frische Pommes? Denn ich will dich unbedingt in meine Mayo dippen!",
+        f"🥵 {target}, du strahlst so eine Hitze aus, du könntest glatt die Fritteuse auf 200 Grad bringen!",
+        f"✨ {target}, bei dir brennt absolut gar nichts an – du bist pure Anziehungskraft!",
+        f"🛢️ {target}, zwischen uns funkt es mehr als in einer schlecht gewarteten Fritteuse!",
+        f"💋 {target}, du bist so hotti hot hot, da schmilzt selbst das härteste Rapsöl dahin!",
+        f"🍟 {target}, willst du mit mir in die Endlosschleife aus Knusprigkeit und Liebe dippen?"
+    ]
+    
+    await ctx.send(random.choice(flirt_sprueche))
+    
+    
 # ==========================================
 # KNUSPER-MENÜ & BESTELL-SYSTEM
 # ==========================================
