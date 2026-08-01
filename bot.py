@@ -204,6 +204,7 @@ async def rezept(ctx):
         f"👨‍🍳 **Pommse' Chef-Empfehlung:**\n{random.choice(zot1)} {random.choice(zot2)} {random.choice(zot3)}"
     )
 
+# USER NECKEN / BELEIDIGEN
 @bot.command(name="necken", aliases=["neck", "beleidige"])
 async def necken(ctx, member: discord.Member = None):
     target = member.mention if member else ctx.author.mention
@@ -214,8 +215,13 @@ async def necken(ctx, member: discord.Member = None):
         "Du hast die Knusprigkeit einer 3 Tage alten Supermarkt-Pommes. 🥴",
         "Dein Aim ist matschiger als 'ne Portion Pommes im Regen. 🌧️🍟",
         "Red weiter, du verbranntes Fritten-Endstück! 🔥",
+        "Du fiese Fritte! 🍟",
+        "Na, wieder mal im falschen Fett gebadet? 🧼🛢️",
+        "Du bist so durchgeschwitzt, du schmeckst schon nach Rapsöl!",
+        "Nicht mal die Möwen am Kiosk würden dich wegpicken! 🕊️"
     ]
     await ctx.send(f"🍟 {target} – {random.choice(neck_sprueche)}")
+
 
 @bot.command(name="ping")
 async def ping(ctx):
