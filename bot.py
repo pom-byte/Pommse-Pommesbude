@@ -249,7 +249,34 @@ async def punkte_cmd(ctx, member: discord.Member = None):
     kontostand = get_punkte(target.id)
     await ctx.send(f"🥔 **{target.mention}** besitzt aktuell **{kontostand} Knusper-Punkte** auf dem Fritten-Konto!")
 
-    
+@bot.command(name="rangliste", aliases=["leaderboard", "top"])
+async def rangliste(ctx):
+    """Zeigt die Top-Fritten-Sammler an!"""
+    conn = sqlite3.connect("knusper.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, punkte FROM user_punkte ORDER BY punkte DESC LIMIT 10")
+    ergebnisse = cursor.fetchall()
+    conn.close()
+
+    if not ergebnisse:
+        try:
+            await ctx.send("🥔 Bisher hat noch niemand Knusper-Punkte gesammelt!")
+        except Exception:
+            pass
+        return
+
+    text = "🏆 **Fritten-Rangliste (Die Top Knusperer):**\n\n"
+    for i, (user_id, punkte) in enumerate(ergebnisse, 1):
+        user = ctx.guild.get_member(user_id)
+        name = user.mention if user else f"User-ID: {user_id}"
+        text += f"{i}. {name} – **{punkte} Knusper-Punkte**\n"
+
+    try:
+        await ctx.send(text)
+    except Exception as e:
+        print(f"Fehler beim Senden der Rangliste: {e}")
+
+        
 @bot.command(name="horoskop", aliases=["schicksal"])
 async def horoskop(ctx):
     horoskope = [
