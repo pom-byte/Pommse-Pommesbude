@@ -118,8 +118,7 @@ async def on_message(message):
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
-# SPITZNAMEN_LISTE = 
-[
+SPITZNAMEN_LISTE = [
     "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
@@ -232,10 +231,7 @@ async def roulette(ctx):
     
     text, punkte_wert = random.choice(ergebnisse)
     
-    # Punkte in der Datenbank speichern
     add_punkte(ctx.author.id, punkte_wert)
-    
-    # Aktuellen Kontostand abfragen
     gesammtpunkte = get_punkte(ctx.author.id)
     
     await ctx.send(
@@ -244,14 +240,12 @@ async def roulette(ctx):
     
 @bot.command(name="punkte", aliases=["knusper", "score"])
 async def punkte_cmd(ctx, member: discord.Member = None):
-    """Nutzung: !punkte oder !punkte @User"""
     target = member if member else ctx.author
     kontostand = get_punkte(target.id)
     await ctx.send(f"🥔 **{target.mention}** besitzt aktuell **{kontostand} Knusper-Punkte** auf dem Fritten-Konto!")
 
 @bot.command(name="rangliste", aliases=["leaderboard", "top"])
 async def rangliste(ctx):
-    """Zeigt die Top-Fritten-Sammler an!"""
     conn = sqlite3.connect("knusper.db")
     cursor = conn.cursor()
     cursor.execute("SELECT user_id, punkte FROM user_punkte ORDER BY punkte DESC LIMIT 10")
@@ -275,7 +269,6 @@ async def rangliste(ctx):
         await ctx.send(text)
     except Exception as e:
         print(f"Fehler beim Senden der Rangliste: {e}")
-
         
 @bot.command(name="horoskop", aliases=["schicksal"])
 async def horoskop(ctx):
@@ -300,7 +293,6 @@ async def rezept(ctx):
         f"👨‍🍳 **Pommse' Chef-Empfehlung:**\n{random.choice(zot1)} {random.choice(zot2)} {random.choice(zot3)}"
     )
 
-# USER NECKEN / BELEIDIGEN
 @bot.command(name="necken", aliases=["neck", "beleidige"])
 async def necken(ctx, member: discord.Member = None):
     target = member.mention if member else ctx.author.mention
@@ -375,7 +367,6 @@ async def feier(ctx):
 @bot.command(name="sauce", aliases=["soße"])
 async def sauce(ctx, member: discord.Member = None):
     target = member.mention if member else ctx.author.mention
-    
     soessen = [
         "**Klassisch Ketchup** – Verlässlich, bodenständig und ein echter Freund! 🍅",
         "**Mayo Extra Fett** – Ein bisschen drüber, aber alle lieben dich! 🥫",
@@ -386,7 +377,6 @@ async def sauce(ctx, member: discord.Member = None):
         "**Süß-Sauer** – Heute bist du eine emotionale Achterbahnfahrt! 🎢"
     ]
     await ctx.send(f"🧪 {target}, deine Sauce des Tages ist: {random.choice(soessen)}")
-    
     
 @bot.command(name="quiz")
 async def quiz(ctx):
@@ -438,22 +428,16 @@ async def slots(ctx):
     else:
         await ctx.send(f"{zeile}💀 Nichts getroffen! Deine Pommes ist ins Fett gefallen.")
         
-# USER IN DIE FRITTEUSE SCHICKEN (TIMEOUT)
 @bot.command(name="fritteuse", aliases=["timeout", "auszeit", "frittieren"])
-@commands.has_permissions(moderate_members=True) # Nur Admins/Moderatoren dürfen das
+@commands.has_permissions(moderate_members=True)
 async def fritteuse(ctx, member: discord.Member, minuten: int = 5, *, grund: str = "Zu salzig gewesen"):
-    """Nutzung: !fritteuse @User [Minuten] [Grund]
-    Beispiel: !fritteuse @NervigerUser 10 Spamming
-    """
     if member == ctx.author:
         await ctx.send("🍟 Du kannst dich doch nicht selbst frittieren, du Knusperkopf!")
         return
 
-    # Zeitdauer umrechnen
     dauer = discord.utils.utcnow() + datetime.timedelta(minutes=minuten)
 
     try:
-        # Führt das Discord-Timeout aus
         await member.timeout(dauer, reason=grund)
         await ctx.send(
             f"🔥 **AB IN DIE FRITTEUSE!** {member.mention} wurde für **{minuten} Minute(n)** auf 180°C runtergekühlt!\n"
@@ -465,13 +449,10 @@ async def fritteuse(ctx, member: discord.Member, minuten: int = 5, *, grund: str
     except Exception as e:
         await ctx.send(f"❌ Fehler beim Frittieren: {e}")
 
-# USER VORZEITIG AUS DER FRITTEUSE HOLEN (TIMEOUT ENTFERNEN)
 @bot.command(name="entfrittieren", aliases=["unmute", "rausholen"])
 @commands.has_permissions(moderate_members=True)
 async def entfrittieren(ctx, member: discord.Member):
-    """Nutzung: !entfrittieren @User"""
     try:
-        # Timeout aufheben (None setzt die Zeit zurück)
         await member.timeout(None)
         await ctx.send(
             f"🍟 **Frisch abgetropft!** {member.mention} wurde vorzeitig aus der Fritteuse geholt und darf wieder mitreden."
@@ -488,11 +469,9 @@ async def entfrittieren(ctx, member: discord.Member):
 
 @bot.command(name="daily")
 async def daily(ctx):
-    """Hol dir deine tägliche Fritten-Ration ab!"""
     conn = sqlite3.connect("knusper.db")
     cursor = conn.cursor()
     
-    # Prüfen, wann der User das letzte Mal !daily gemacht hat
     cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id INTEGER PRIMARY KEY, last_daily TEXT)")
     cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = ?", (ctx.author.id,))
     result = cursor.fetchone()
@@ -504,10 +483,8 @@ async def daily(ctx):
         await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
         return
         
-    # Punkte gutschreiben (+50 Punkte)
     add_punkte(ctx.author.id, 50)
     
-    # Datum aktualisieren
     cursor.execute("INSERT OR REPLACE INTO user_daily (user_id, last_daily) VALUES (?, ?)", (ctx.author.id, heute))
     conn.commit()
     conn.close()
@@ -518,7 +495,6 @@ async def daily(ctx):
 
 @bot.command(name="give", aliases=["trinkgeld", "schenken"])
 async def give(ctx, member: discord.Member, anzahl: int):
-    """Schenke einem anderen User Knusper-Punkte: !give @User 50"""
     if member == ctx.author:
         await ctx.send("🍟 Du kannst dir doch nicht selbst Punkte schenken, du Schlawiner!")
         return
@@ -532,7 +508,6 @@ async def give(ctx, member: discord.Member, anzahl: int):
         await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_punkte} Punkte)")
         return
         
-    # Punkte abziehen und dem anderen geben
     add_punkte(ctx.author.id, -anzahl)
     add_punkte(member.id, anzahl)
     
@@ -542,7 +517,6 @@ async def give(ctx, member: discord.Member, anzahl: int):
 @bot.command(name="cheat", aliases=["adminpunkte", "fabian"])
 @commands.has_permissions(administrator=True)
 async def cheat(ctx, anzahl: int, member: discord.Member = None):
-    """Admin-Befehl: Dir selbst oder anderen Punkte zuschustern!"""
     target = member if member else ctx.author
     add_punkte(target.id, anzahl)
     neuer_stand = get_punkte(target.id)
@@ -551,7 +525,6 @@ async def cheat(ctx, anzahl: int, member: discord.Member = None):
 
 @bot.command(name="shop")
 async def shop(ctx):
-    """Zeigt den Knusper-Shop an"""
     embed = discord.Embed(
         title="🛒 Pommse' Knusper-Shop",
         description="Gib deine hart erarbeiteten Punkte für Belohnungen aus!",
@@ -565,7 +538,6 @@ async def shop(ctx):
 
 @bot.command(name="kaufen")
 async def kaufen(ctx, item: str):
-    """Kaufe Items aus dem Shop: !kaufen stammgast"""
     item = item.lower()
     guthaben = get_punkte(ctx.author.id)
     
@@ -600,127 +572,8 @@ async def kaufen(ctx, item: str):
             await ctx.send(f"🎉 Punkte abgezogen! (Konnte Spitzname wegen Admin-Rechten nicht ändern, aber Ehren-Status ist gesichert!)")
     else:
         await ctx.send("❌ Dieses Item gibt es nicht im Shop! Tippe `!shop` um das Angebot zu sehen.")
-        
-# ==========================================
-# KNUSPER-SHOP & BONUS SYSTEME
-# ==========================================
-
-@bot.command(name="daily")
-async def daily(ctx):
-    """Hol dir deine tägliche Fritten-Ration ab!"""
-    conn = sqlite3.connect("knusper.db")
-    cursor = conn.cursor()
-    
-    # Prüfen, wann der User das letzte Mal !daily gemacht hat
-    cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id INTEGER PRIMARY KEY, last_daily TEXT)")
-    cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = ?", (ctx.author.id,))
-    result = cursor.fetchone()
-    
-    heute = datetime.date.today().isoformat()
-    
-    if result and result[0] == heute:
-        conn.close()
-        await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
-        return
-        
-    # Punkte gutschreiben (+50 Punkte)
-    add_punkte(ctx.author.id, 50)
-    
-    # Datum aktualisieren
-    cursor.execute("INSERT OR REPLACE INTO user_daily (user_id, last_daily) VALUES (?, ?)", (ctx.author.id, heute))
-    conn.commit()
-    conn.close()
-    
-    gesammt = get_punkte(ctx.author.id)
-    await ctx.send(f"🎉 **Tägliche Fritten-Ration abgeholt!** {ctx.author.mention} bekommt **+50 Knusper-Punkte**!\n*(Neuer Kontostand: {gesammt} Punkte)*")
 
 
-@bot.command(name="give", aliases=["trinkgeld", "schenken"])
-async def give(ctx, member: discord.Member, anzahl: int):
-    """Schenke einem anderen User Knusper-Punkte: !give @User 50"""
-    if member == ctx.author:
-        await ctx.send("🍟 Du kannst dir doch nicht selbst Punkte schenken, du Schlawiner!")
-        return
-        
-    if anzahl <= 0:
-        await ctx.send("🍟 Du musst schon eine positive Anzahl an Punkten verschenken wollen!")
-        return
-        
-    sender_punkte = get_punkte(ctx.author.id)
-    if sender_punkte < anzahl:
-        await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_punkte} Punkte)")
-        return
-        
-    # Punkte abziehen und dem anderen geben
-    add_punkte(ctx.author.id, -anzahl)
-    add_punkte(member.id, anzahl)
-    
-    await ctx.send(f"💸 {ctx.author.mention} hat **{anzahl} Knusper-Punkte** an {member.mention} rüberschoben! Stabil! 🤝🍟")
-
-
-@bot.command(name="cheat", aliases=["adminpunkte", "fabian"])
-@commands.has_permissions(administrator=True)
-async def cheat(ctx, anzahl: int, member: discord.Member = None):
-    """Admin-Befehl: Dir selbst oder anderen Punkte zuschustern!"""
-    target = member if member else ctx.author
-    add_punkte(target.id, anzahl)
-    neuer_stand = get_punkte(target.id)
-    await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat soeben **{anzahl} Punkte** bekommen!\n*(Kontostand: {neuer_stand} Knusper-Punkte)* 🛢️✨")
-
-
-@bot.command(name="shop")
-async def shop(ctx):
-    """Zeigt den Knusper-Shop an"""
-    embed = discord.Embed(
-        title="🛒 Pommse' Knusper-Shop",
-        description="Gib deine hart erarbeiteten Punkte für Belohnungen aus!",
-        color=discord.Color.orange()
-    )
-    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nSchreibe: `!kaufen stammgast`", inline=False)
-    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nSchreibe: `!kaufen titel`", inline=False)
-    embed.set_footer(text="Nutze !kaufen [item] um zuzuschlagen!")
-    await ctx.send(embed=embed)
-
-
-@bot.command(name="kaufen")
-async def kaufen(ctx, item: str):
-    """Kaufe Items aus dem Shop: !kaufen stammgast"""
-    item = item.lower()
-    guthaben = get_punkte(ctx.author.id)
-    
-    if item == "stammgast":
-        preis = 500
-        if guthaben < preis:
-            await ctx.send(f"❌ Zu arm für frittiertes Gold! Du hast {guthaben} Punkte, brauchst aber {preis}.")
-            return
-            
-        role_name = "Stammgast"
-        role = discord.utils.get(ctx.guild.roles, name=role_name)
-        if not role:
-            await ctx.send(f"⚠️ Die Rolle '{role_name}' existiert auf dem Server nicht.")
-            return
-            
-        add_punkte(ctx.author.id, -preis)
-        await ctx.author.add_roles(role)
-        await ctx.send(f"🎉 Glückwunsch {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte gegönnt! 👑🍟")
-        
-    elif item == "titel":
-        preis = 200
-        if guthaben < preis:
-            await ctx.send(f"❌ Dafür reicht dein Kleingeld nicht! Du hast {guthaben} Punkte (Brauchst {preis}).")
-            return
-            
-        add_punkte(ctx.author.id, -preis)
-        neuer_titel = "Die Ehren-Fritte 🍟👑"
-        try:
-            await ctx.author.edit(nick=neuer_titel)
-            await ctx.send(f"✨ {ctx.author.mention} hat sich offiziell in **{neuer_titel}** umgetauft!")
-        except Exception:
-            await ctx.send(f"🎉 Punkte abgezogen! (Konnte Spitzname wegen Admin-Rechten nicht ändern, aber Ehren-Status ist gesichert!)")
-    else:
-        await ctx.send("❌ Dieses Item gibt es nicht im Shop! Tippe `!shop` um das Angebot zu sehen.")
-        
-        
 # ==========================================
 # BOT STARTEN
 # ==========================================
@@ -729,6 +582,4 @@ TOKEN = os.getenv("HAUPTBOT_DISCORD_TOKEN")
 if TOKEN:
     bot.run(TOKEN)
 else:
-    print("⚠️ Kein Token gefunden!") 
-    
-    
+    print("⚠️ Kein Token gefunden!")
