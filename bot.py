@@ -130,7 +130,7 @@ async def spitzname(ctx, member: discord.Member = None):
             f"😅 Ich wollte {target.mention} zu **'{neuer_name}'** umbenennen, aber mir fehlen die Rechte dazu (oder der User hat eine höhere Rolle als ich)!"
         )
 
-Spitznamen-Command
+# Spitznamen-Command
 @bot.command(name="spitzname")
 @commands.has_permissions(manage_nicknames=True)
 async def spitzname(ctx, member: discord.Member = None):
