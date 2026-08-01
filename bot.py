@@ -157,7 +157,7 @@ async def stammgast(ctx, member: discord.Member):
 # SPECIAL-COMMANDS
 # ==========================================
 
-@bot.command(name="orakel", aliases=["frage", "8ball"])
+  @bot.command(name="orakel", aliases=["frage", "8ball"])
 async def orakel(ctx, *, frage: str = None):
     if not frage:
         await ctx.send("🍟 Frag das Fett-Orakel etwas! Z.B. `!orakel Werde ich heute gewinnen?`")
@@ -173,7 +173,6 @@ async def orakel(ctx, *, frage: str = None):
         "Mayonnaise sagt Ja, Ketchup sagt Nein. **50/50!** 🥫"
     ]
     await ctx.send(f"🔮 **Frage:** *{frage}*\n🍟 **Das Orakel sagt:** {random.choice(antworten)}")
-    
     
 @bot.command(name="fett")
 async def fett(ctx, *, thema: str = None):
