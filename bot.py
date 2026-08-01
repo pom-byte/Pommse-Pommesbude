@@ -6,7 +6,7 @@ from discord.ext import commands
 from flask import Flask
 from threading import Thread
 from dotenv import load_dotenv
-import sqlite3  # <-- NEU: Das brauchen wir für die Datenbank
+import sqlite3
 
 # --- DATENBANK FUNKTIONEN ---
 def init_db():
@@ -32,7 +32,7 @@ def add_punkte(user_id, anzahl):
 def get_punkte(user_id):
     conn = sqlite3.connect("knusper.db")
     cursor = conn.cursor()
-    cursor.execute("SELECTpunkte FROM user_punkte WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT punkte FROM user_punkte WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else 0
@@ -72,8 +72,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    init_db()  # <-- HIER WIRD DIE DATENBANK AKTIVIERT
-    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt as {bot.user})")
+    init_db()  # HIER WIRD DIE DATENBANK AKTIVIERT
+    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -229,10 +229,10 @@ async def roulette(ctx):
         ("🥔 **Kartoffel-Glück:** Eine perfekte Süßkartoffel-Fritte! Knusprigkeits-Level 100. +100 Knusper-Punkte!", 100),
     ]
     
-    text, punkte = random.choice(ergebnisse)
+    text, punkte_wert = random.choice(ergebnisse)
     
     # Punkte in der Datenbank speichern
-    add_punkte(ctx.author.id, punkte)
+    add_punkte(ctx.author.id, punkte_wert)
     
     # Aktuellen Kontostand abfragen
     gesammtpunkte = get_punkte(ctx.author.id)
@@ -242,7 +242,7 @@ async def roulette(ctx):
     )
     
 @bot.command(name="punkte", aliases=["knusper", "score"])
-async def punkte(ctx, member: discord.Member = None):
+async def punkte_cmd(ctx, member: discord.Member = None):
     """Nutzung: !punkte oder !punkte @User"""
     target = member if member else ctx.author
     kontostand = get_punkte(target.id)
@@ -461,4 +461,6 @@ TOKEN = os.getenv("HAUPTBOT_DISCORD_TOKEN")
 if TOKEN:
     bot.run(TOKEN)
 else:
-    print("⚠️ Kein Token gefunden!")
+    print("⚠️ Kein Token gefunden!") 
+    
+    
