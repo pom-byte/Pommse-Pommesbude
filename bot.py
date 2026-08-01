@@ -524,36 +524,37 @@ async def cheat(ctx, anzahl: int, member: discord.Member = None):
 
 @bot.command(name="kompliment", aliases=["frittenlob", "heiss", "ehre"])
 async def kompliment(ctx, member: discord.Member = None):
-    """Verteilt die heißesten Fritten-Komplimente!"""
+    """Verteilt charmante Fritten-Komplimente und knackige kurze Sprüche!"""
     target = member.mention if member else ctx.author.mention
     
     komplimente_liste = [
-        f"🔥 {target}, du bist knackiger als eine frische Riffelpommse direkt aus dem 180-Grad-Öl!",
-        f"👑 {target}, selbst die edelste Mayo würde vor Neid erblassen, wenn sie dich sieht!",
+        f"🔥 {target}, du Hottie!",
+        f"👑 {target}, absolute Sahnestück-Fritte!",
+        f"✨ {target}, du bist knackiger als eine frische Riffelpommse direkt aus dem 180-Grad-Öl!",
+        f"🍟 {target}, du Hottie, selbst die edelste Mayo würde vor Neid erblassen, wenn sie dich sieht!",
         f"🛢️ {target}, du bringst die Fritteuse schneller zum Kochen als jeder High-End-Gaming-PC!",
         f"🏆 {target}, mit dir brennt absolut gar nichts an – du bist der absolute Hauptgewinn am Kiosk!",
-        f"✨ {target}, du bist so goldbraun und knusprig, die Möwen würden Schlange stehen!",
-        f"🍟 {target}, du bist die unangefochtene Mayo-Majestät der Fritöse!"
+        f"🌟 {target}, absolute Traum-Fritte!"
     ]
     
     await ctx.send(random.choice(komplimente_liste))
     
+
 @bot.command(name="dippen", aliases=["hotti", "flirt"])
 async def dippen(ctx, member: discord.Member = None):
-    """Der ultimative Flirt- und Anziehungs-Befehl!"""
+    """Der ultimative, extrem spicy Flirt-Befehl!"""
     target = member.mention if member else ctx.author.mention
     
     flirt_sprueche = [
-        f"🔥 {target}, bist du eine frische Pommes? Denn ich will dich unbedingt in meine Mayo dippen!",
-        f"🥵 {target}, du strahlst so eine Hitze aus, du könntest glatt die Fritteuse auf 200 Grad bringen!",
-        f"✨ {target}, bei dir brennt absolut gar nichts an – du bist pure Anziehungskraft!",
-        f"🛢️ {target}, zwischen uns funkt es mehr als in einer schlecht gewarteten Fritteuse!",
-        f"💋 {target}, du bist so hotti hot hot, da schmilzt selbst das härteste Rapsöl dahin!",
-        f"🍟 {target}, willst du mit mir in die Endlosschleife aus Knusprigkeit und Liebe dippen?"
+        f"🌶️ {target}, wenn du eine Pommes wärst, würde ich dich nicht nur in Mayo dippen, sondern in der schärfsten Habanero-Soße baden lassen, bis die Fritteuse kocht!",
+        f"🥵 {target}, du brennst so heiß, da schmilzt nicht nur das Rapsöl – du legst hier gerade den ganzen Imbiss lahm!",
+        f"🔥 {target}, bei deinem Anblick fängt selbst die kälteste Tiefkühlkost an zu knistern. Wollen wir die Temperatur erhöhen?",
+        f"🛢️ {target}, verdammt, du siehst so verboten knusprig aus, dass ich dich am liebsten direkt naschen würde, bevor das Fett überhaupt heiß ist!",
+        f"💋 {target}, du bist so hotti hot hot, da brennt jede Sicherung durch. Lass uns den Schalter auf Anschlag drehen!",
+        f"🔥🌶️ {target}, du bist die schärfste Gewürzmischung diesseits der Frittierstraße – lass uns zusammenbrennen!"
     ]
     
     await ctx.send(random.choice(flirt_sprueche))
-    
     
 # ==========================================
 # KNUSPER-MENÜ & BESTELL-SYSTEM
