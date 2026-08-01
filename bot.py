@@ -86,7 +86,7 @@ async def on_message(message):
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
-SPITZNAMEN_LISTE = [
+# SPITZNAMEN_LISTE = [
     "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
@@ -157,6 +157,24 @@ async def stammgast(ctx, member: discord.Member):
 # SPECIAL-COMMANDS
 # ==========================================
 
+@bot.command(name="orakel", aliases=["frage", "8ball"])
+async def orakel(ctx, *, frage: str = None):
+    if not frage:
+        await ctx.send("🍟 Frag das Fett-Orakel etwas! Z.B. `!orakel Werde ich heute gewinnen?`")
+        return
+        
+    antworten = [
+        "Die Fritten-Götter sagen eindeutig: **JA!** ✨🍟",
+        "Das Fett blubbert friedlich... das ist ein **Gutes Zeichen**! 🫧",
+        "Klarer als frisches Rapsöl: **Auf jeden Fall!** 👍",
+        "Puh, die Fritteuse raucht... **Eher nein.** 💨",
+        "Matschige Aussichten... **Vergiss es.** 🌧️",
+        "Sogar die Süßkartoffeln sind sich uneinig. **Frag später nochmal!** 🍠",
+        "Mayonnaise sagt Ja, Ketchup sagt Nein. **50/50!** 🥫"
+    ]
+    await ctx.send(f"🔮 **Frage:** *{frage}*\n🍟 **Das Orakel sagt:** {random.choice(antworten)}")
+    
+    
 @bot.command(name="fett")
 async def fett(ctx, *, thema: str = None):
     prozent = random.randint(12, 99)
@@ -284,6 +302,22 @@ async def soße(ctx):
         f"🧪 Analyse für {ctx.author.mention}:\nDu bestehst heute zu **{random.randint(1, 100)}%** aus **{random.choice(soßen)}**!"
     )
 
+@bot.command(name="sauce", aliases=["soße"])
+async def sauce(ctx, member: discord.Member = None):
+    target = member.mention if member else ctx.author.mention
+    
+    soessen = [
+        "**Klassisch Ketchup** – Verlässlich, bodenständig und ein echter Freund! 🍅",
+        "**Mayo Extra Fett** – Ein bisschen drüber, aber alle lieben dich! 🥫",
+        "**Joppiesauce** – Süß, würzig und extrem speziell! 🇳🇱",
+        "**Knoblauch-Sauce** – Sehr stabil, aber halte heute lieber Abstand zu Leuten! 🧄",
+        "**Scharfe Chili-Sauce** – Vorsicht, heute bist du richtig feurig unterwegs! 🔥",
+        "**Trüffel-Mayo** – Hui, da hält sich wohl jemand für was Besseres! 💅✨",
+        "**Süß-Sauer** – Heute bist du eine emotionale Achterbahnfahrt! 🎢"
+    ]
+    await ctx.send(f"🧪 {target}, deine Sauce des Tages ist: {random.choice(soessen)}")
+    
+    
 @bot.command(name="quiz")
 async def quiz(ctx):
     fragen = [
@@ -313,6 +347,27 @@ async def matsch(ctx, member: discord.Member = None):
         status = "ABSOLUTER MATSCH! Sofort ins Bett legen. 🛑"
     await ctx.send(f"🥔 **Matsch-Analyse für {target.mention}:** {matsch_level}% – *{status}*")
 
+@bot.command(name="muenze", aliases=["flip", "ketchupodermayo"])
+async def muenze(ctx):
+    ergebnis = random.choice(["🍅 **KETCHUP!**", "🥫 **MAYO!**"])
+    await ctx.send(f"🪙 Die Münze fliegt durch die Fritteuse und landet auf... {ergebnis}")
+    
+ @bot.command(name="slots", aliases=["casino", "zocken"])
+async def slots(ctx):
+    emojis = ["🍟", "🥔", "🧀", "🌭", "🧂", "🍠"]
+    slot1 = random.choice(emojis)
+    slot2 = random.choice(emojis)
+    slot3 = random.choice(emojis)
+    
+    zeile = f"🎰 | {slot1} | {slot2} | {slot3} |\n\n"
+    
+    if slot1 == slot2 == slot3:
+         await ctx.send(f"{zeile}🎉 **JACKPOT!** Du gewinnst eine lebenslange Flatrate für Riffelfritten! 🏆🍟")
+    elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
+        await ctx.send(f"{zeile}✨ Fast! Zwei gleiche! Hier ist ein Trost-Ketchup. 🍅")
+    else:
+        await ctx.send(f"{zeile}💀 Nichts getroffen! Deine Pommes ist ins Fett gefallen.")
+        
 # USER IN DIE FRITTEUSE SCHICKEN (TIMEOUT)
 @bot.command(name="fritteuse", aliases=["timeout", "auszeit", "frittieren"])
 @commands.has_permissions(moderate_members=True) # Nur Admins/Moderatoren dürfen das
