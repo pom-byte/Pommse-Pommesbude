@@ -218,10 +218,16 @@ async def necken(ctx, member: discord.Member = None):
         "Du fiese Fritte! 🍟",
         "Na, wieder mal im falschen Fett gebadet? 🧼🛢️",
         "Du bist so durchgeschwitzt, du schmeckst schon nach Rapsöl!",
-        "Nicht mal die Möwen am Kiosk würden dich wegpicken! 🕊️"
+        "Nicht mal die Möwen am Kiosk würden dich wegpicken! 🕊️",
+        # NEUE CHOP-SPRÜCHE 🍟🔥
+        "Uiuiui, da ist aber jemand ordentlich versalzen heute! 🧂😳",
+        "Oh oh... da denkt wohl jemand, er wäre eine edle Süßkartoffel! 🍠✨",
+        "Du bist doch maximal 'ne Riffelfritte auf Sparflamme! 📉",
+        "Riechst du das? Du riechst nach 3 Wochen altem Fritteusen-Fett! 🤢",
+        "Du hast auch mehr Mayonnaise als Hirn im Kopf, oder? 🥫🧠",
+        "Pssssst... leise sein, sonst landest du direkt als Beilage im Kindermenü! 🧸🍟"
     ]
     await ctx.send(f"🍟 {target} – {random.choice(neck_sprueche)}")
-
 
 @bot.command(name="ping")
 async def ping(ctx):
