@@ -86,7 +86,7 @@ async def on_message(message):
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
-# SPITZNAMEN_LISTE = [
+SPITZNAMEN_LISTE = [
     "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
@@ -215,7 +215,7 @@ async def horoskop(ctx):
 @bot.command(name="rezept")
 async def rezept(ctx):
     zot1 = ["Süßkartoffel-Fritten", "Gitterkartoffeln", "Klassische Pommes", "Chili-Cheese-Fries", "Wellenschnitt-Fritten"]
-    zot2 = ["mit Nutella", "getunkt in Energy-Drink", "mit Extra-Knoblauch-Mayo", "überstreut mit Gummibärchen", "überbakeen mit Schmelzkäse"]
+    zot2 = ["mit Nutella", "getunkt in Energy-Drink", "mit Extra-Knoblauch-Mayo", "überstreut mit Gummibärchen", "überbacken mit Schmelzkäse"]
     zot3 = ["und einer Prise Speisesalz.", "und warmem Maggi.", "garniert mit Pfefferminz-Eis.", "serviert in einer Zeitung von gestern."]
 
     await ctx.send(
@@ -295,13 +295,6 @@ async def feier(ctx):
         f"MVP der Runde ({ctx.author.mention}) erhält hiermit den Titel: **{random.choice(titel)}**"
     )
 
-@bot.command(name="soße")
-async def soße(ctx):
-    soßen = ["Ketchup 🥫", "Mayo 🥛", "Süß-Sauer 🍯", "Joppiesoße 🟡", "Gar nichts (Trockenfritte) 🌵"]
-    await ctx.send(
-        f"🧪 Analyse für {ctx.author.mention}:\nDu bestehst heute zu **{random.randint(1, 100)}%** aus **{random.choice(soßen)}**!"
-    )
-
 @bot.command(name="sauce", aliases=["soße"])
 async def sauce(ctx, member: discord.Member = None):
     target = member.mention if member else ctx.author.mention
@@ -352,7 +345,7 @@ async def muenze(ctx):
     ergebnis = random.choice(["🍅 **KETCHUP!**", "🥫 **MAYO!**"])
     await ctx.send(f"🪙 Die Münze fliegt durch die Fritteuse und landet auf... {ergebnis}")
     
- @bot.command(name="slots", aliases=["casino", "zocken"])
+@bot.command(name="slots", aliases=["casino", "zocken"])
 async def slots(ctx):
     emojis = ["🍟", "🥔", "🧀", "🌭", "🧂", "🍠"]
     slot1 = random.choice(emojis)
@@ -362,7 +355,7 @@ async def slots(ctx):
     zeile = f"🎰 | {slot1} | {slot2} | {slot3} |\n\n"
     
     if slot1 == slot2 == slot3:
-         await ctx.send(f"{zeile}🎉 **JACKPOT!** Du gewinnst eine lebenslange Flatrate für Riffelfritten! 🏆🍟")
+        await ctx.send(f"{zeile}🎉 **JACKPOT!** Du gewinnst eine lebenslange Flatrate für Riffelfritten! 🏆🍟")
     elif slot1 == slot2 or slot2 == slot3 or slot1 == slot3:
         await ctx.send(f"{zeile}✨ Fast! Zwei gleiche! Hier ist ein Trost-Ketchup. 🍅")
     else:
@@ -410,6 +403,7 @@ async def entfrittieren(ctx, member: discord.Member):
         await ctx.send("❌ Mir fehlen die Rechte dafür!")
     except Exception as e:
         await ctx.send(f"❌ Fehler: {e}")
+
 # ==========================================
 # BOT STARTEN
 # ==========================================
