@@ -6,7 +6,38 @@ from discord.ext import commands
 from flask import Flask
 from threading import Thread
 from dotenv import load_dotenv
+import sqlite3  # <-- NEU: Das brauchen wir für die Datenbank
 
+# --- DATENBANK FUNKTIONEN ---
+def init_db():
+    conn = sqlite3.connect("knusper.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_punkte (
+            user_id INTEGER PRIMARY KEY,
+            punkte INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def add_punkte(user_id, anzahl):
+    conn = sqlite3.connect("knusper.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO user_punkte (user_id, punkte) VALUES (?, 0)", (user_id,))
+    cursor.execute("UPDATE user_punkte SET punkte = punkte + ? WHERE user_id = ?", (anzahl, user_id))
+    conn.commit()
+    conn.close()
+
+def get_punkte(user_id):
+    conn = sqlite3.connect("knusper.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECTpunkte FROM user_punkte WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else 0
+    
+    
 # ==========================================
 # 1. SETUP FOR LOCAL PC & RENDER SERVER
 # ==========================================
@@ -41,6 +72,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
+    init_db()  # <-- HIER WIRD DIE DATENBANK AKTIVIERT
     print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt as {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
@@ -188,17 +220,35 @@ async def fett(ctx, *, thema: str = None):
 
 @bot.command(name="roulette")
 async def roulette(ctx):
+    """Nutzung: !roulette"""
     ergebnisse = [
-        "🍟 **Perfekt!** Du hast eine goldbraune, knusprige Riffelpommse gezogen. +50 Knusper-Punkte!",
-        "🥤 **Glück gehabt!** Nur eine lauwarme Pommes aber mit extra Mayo.",
-        "🔥 **AIAIAI!** Zu nah an die Fritteuse geraten. Du hast dir die Finger verbrannt!",
-        "💀 **ABSTURZ!** Du bist direkt ins 180°C heiße Fett gefallen. Absoluter Totalschaden!",
-        "🥔 **Kartoffel-Glück:** Eine perfekte Süßkartoffel-Fritte! Knusprigkeits-Level 100.",
+        ("🍟 **Perfekt!** Du hast eine goldbraune, knusprige Riffelpommse gezogen. +50 Knusper-Punkte!", 50),
+        ("🥤 **Glück gehabt!** Nur eine lauwarme Pommes aber mit extra Mayo. +10 Knusper-Punkte!", 10),
+        ("🔥 **AIAIAI!** Zu nah an die Fritteuse geraten. Du hast dir die Finger verbrannt! -10 Knusper-Punkte!", -10),
+        ("💀 **ABSTURZ!** Du bist direkt ins 180°C heiße Fett gefallen. Absoluter Totalschaden! -30 Knusper-Punkte!", -30),
+        ("🥔 **Kartoffel-Glück:** Eine perfekte Süßkartoffel-Fritte! Knusprigkeits-Level 100. +100 Knusper-Punkte!", 100),
     ]
+    
+    text, punkte = random.choice(ergebnisse)
+    
+    # Punkte in der Datenbank speichern
+    add_punkte(ctx.author.id, punkte)
+    
+    # Aktuellen Kontostand abfragen
+    gesammtpunkte = get_punkte(ctx.author.id)
+    
     await ctx.send(
-        f"🎰 {ctx.author.mention} dreht am Fritteusen-Rad...\n\n{random.choice(ergebnisse)}"
+        f"🎰 {ctx.author.mention} dreht am Fritteusen-Rad...\n\n{text}\n*(Dein Kontostand: {gesammtpunkte} Knusper-Punkte)*"
     )
+    
+@bot.command(name="punkte", aliases=["knusper", "score"])
+async def punkte(ctx, member: discord.Member = None):
+    """Nutzung: !punkte oder !punkte @User"""
+    target = member if member else ctx.author
+    kontostand = get_punkte(target.id)
+    await ctx.send(f"🥔 **{target.mention}** besitzt aktuell **{kontostand} Knusper-Punkte** auf dem Fritten-Konto!")
 
+    
 @bot.command(name="horoskop", aliases=["schicksal"])
 async def horoskop(ctx):
     horoskope = [
