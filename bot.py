@@ -130,7 +130,22 @@ async def spitzname(ctx, member: discord.Member = None):
             f"😅 Ich wollte {target.mention} zu **'{neuer_name}'** umbenennen, aber mir fehlen die Rechte dazu (oder der User hat eine höhere Rolle als ich)!"
         )
 
+Spitznamen-Command
+@bot.command(name="spitzname")
+@commands.has_permissions(manage_nicknames=True)
+async def spitzname(ctx, member: discord.Member = None):
+    # Falls kein Member angegeben wurde, nimm den Ausführer
+    target = member if member else ctx.author
+    neuer_name = "curly fries"
 
+    try:
+        await target.edit(nick=neuer_name)
+        await ctx.send(f"🍟 **{target.mention}** heißt ab jetzt offiziell **{neuer_name}**!")
+    except discord.Forbidden:
+        await ctx.send("❌ Mir fehlen die Rechte! Meine Rolle muss höher liegen als die der Person und das Recht 'Spitznamen verwalten' haben.")
+    except Exception as e:
+        await ctx.send(f"❌ Fehler: {e}")
+        
 # Spitznamen einfach nur im Chat RUFEN (!rufname)
 @bot.command(name="rufname", aliases=["ruf", "spitznamen"])
 async def rufname(ctx, member: discord.Member = None):
