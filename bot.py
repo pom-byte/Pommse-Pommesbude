@@ -157,7 +157,7 @@ async def stammgast(ctx, member: discord.Member):
 # SPECIAL-COMMANDS
 # ==========================================
 
-  @bot.command(name="orakel", aliases=["frage", "8ball"])
+ @bot.command(name="orakel", aliases=["frage", "8ball"])
 async def orakel(ctx, *, frage: str = None):
     if not frage:
         await ctx.send("🍟 Frag das Fett-Orakel etwas! Z.B. `!orakel Werde ich heute gewinnen?`")
