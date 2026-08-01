@@ -174,6 +174,7 @@ async def orakel(ctx, *, frage: str = None):
         "Mayonnaise sagt Ja, Ketchup sagt Nein. **50/50!** 🥫"
     ]
     await ctx.send(f"🔮 **Frage:** *{frage}*\n🍟 **Das Orakel sagt:** {random.choice(antworten)}")
+
     
 @bot.command(name="fett")
 async def fett(ctx, *, thema: str = None):
