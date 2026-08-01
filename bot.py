@@ -522,7 +522,22 @@ async def cheat(ctx, anzahl: int, member: discord.Member = None):
     neuer_stand = get_punkte(target.id)
     await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat soeben **{anzahl} Punkte** bekommen!\n*(Kontostand: {neuer_stand} Knusper-Punkte)* 🛢️✨")
 
-
+@bot.command(name="kompliment", aliases=["frittenlob", "heiss", "ehre"])
+async def kompliment(ctx, member: discord.Member = None):
+    """Verteilt die heißesten Fritten-Komplimente!"""
+    target = member.mention if member else ctx.author.mention
+    
+    komplimente_liste = [
+        f"🔥 {target}, du bist knackiger als eine frische Riffelpommse direkt aus dem 180-Grad-Öl!",
+        f"👑 {target}, selbst die edelste Mayo würde vor Neid erblassen, wenn sie dich sieht!",
+        f"🛢️ {target}, du bringst die Fritteuse schneller zum Kochen als jeder High-End-Gaming-PC!",
+        f"🏆 {target}, mit dir brennt absolut gar nichts an – du bist der absolute Hauptgewinn am Kiosk!",
+        f"✨ {target}, du bist so goldbraun und knusprig, die Möwen würden Schlange stehen!",
+        f"🍟 {target}, du bist die unangefochtene Mayo-Majestät der Fritöse!"
+    ]
+    
+    await ctx.send(random.choice(komplimente_liste))
+    
 # ==========================================
 # KNUSPER-MENÜ & DIPP-SYSTEM (SHOP)
 # ==========================================
