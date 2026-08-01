@@ -539,7 +539,7 @@ async def kompliment(ctx, member: discord.Member = None):
     await ctx.send(random.choice(komplimente_liste))
     
 # ==========================================
-# KNUSPER-MENÜ & DIPP-SYSTEM (SHOP)
+# KNUSPER-MENÜ & BESTELL-SYSTEM
 # ==========================================
 
 @bot.command(name="menue", aliases=["shop", "karte"])
@@ -550,15 +550,15 @@ async def menue(ctx):
         description="Tausche deine hart verdienten Knusper-Punkte gegen exklusive Menüs ein!",
         color=discord.Color.orange()
     )
-    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nBestelle mit: `!dippen stammgast`", inline=False)
-    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nBestelle mit: `!dippen titel`", inline=False)
-    embed.set_footer(text="Nutze !dippen [item] um zuzuschlagen!")
+    embed.add_field(name="1. Stammgast-Rolle", value="Kostet: **500 Punkte**\nBestelle mit: `!bestellen stammgast`", inline=False)
+    embed.add_field(name="2. Ehren-Fritte Titel", value="Kostet: **200 Punkte**\nBestelle mit: `!bestellen titel`", inline=False)
+    embed.set_footer(text="Nutze !bestellen [item] um zuzuschlagen!")
     await ctx.send(embed=embed)
 
 
-@bot.command(name="dippen", aliases=["bestellen", "kaufen"])
-async def dippen(ctx, item: str):
-    """Tausche Punkte gegen Menüs ein: !dippen stammgast"""
+@bot.command(name="bestellen", aliases=["order", "kaufen"])
+async def bestellen(ctx, item: str):
+    """Bestelle Menüs von der Karte: !bestellen stammgast"""
     item = item.lower()
     guthaben = get_punkte(ctx.author.id)
     
@@ -576,7 +576,7 @@ async def dippen(ctx, item: str):
             
         add_punkte(ctx.author.id, -preis)
         await ctx.author.add_roles(role)
-        await ctx.send(f"🎉 Lecker, {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte gegönnt und bist jetzt fester Bestandteil der Fritteuse! 👑🍟")
+        await ctx.send(f"🎉 Frische Bestellung serviert, {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte geschnappt und gehörst zum harten Fritösen-Kern! 👑🍟")
         
     elif item == "titel":
         preis = 200
@@ -588,11 +588,13 @@ async def dippen(ctx, item: str):
         neuer_titel = "Die Ehren-Fritte 🍟👑"
         try:
             await ctx.author.edit(nick=neuer_titel)
-            await ctx.send(f"✨ {ctx.author.mention} hat sich erfolgreich in **{neuer_titel}** dippen lassen!")
+            await ctx.send(f"✨ {ctx.author.mention} hat sich erfolgreich in **{neuer_titel}** umbenennen lassen!")
         except Exception:
             await ctx.send(f"🎉 Punkte abgezogen! (Konnte deinen Spitznamen wegen Admin-Rechten leider nicht ändern, aber der Status gehört dir!)")
     else:
         await ctx.send("❌ Das steht nicht auf der Speisekarte! Tippe `!menue`, um das Angebot zu sehen.")
+        
+        
 # ==========================================
 # BOT STARTEN
 # ==========================================
