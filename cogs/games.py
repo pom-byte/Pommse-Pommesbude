@@ -1,18 +1,19 @@
-import discord
-from discord.ext import commands
 import os
 import random
+import discord
+from discord.ext import commands
 import psycopg2
-
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
 
 class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def get_db_connection(self):
+        database_url = os.getenv("DATABASE_URL")
+        return psycopg2.connect(database_url, sslmode='require')
+
     def get_punkte(self, user_id):
-        conn = get_db_connection()
+        conn = self.get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
         row = cur.fetchone()
@@ -20,11 +21,17 @@ class Games(commands.Cog):
         conn.close()
         return row[0] if row else 0
 
-    def update_punkte(self, user_id, delta):
-        conn = get_db_connection()
+    def update_punkte(self, user_id, punkte_delta, highscore_delta=0):
+        conn = self.get_db_connection()
         cur = conn.cursor()
-        cur.execute("INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, 0, 0) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
-        cur.execute("UPDATE user_punkte SET punkte = punkte + %s WHERE user_id = %s;", (delta, user_id))
+        cur.execute(
+            "INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, 0, 0) ON CONFLICT (user_id) DO NOTHING;", 
+            (user_id,)
+        )
+        cur.execute(
+            "UPDATE user_punkte SET punkte = punkte + %s, highscore = highscore + %s WHERE user_id = %s;", 
+            (punkte_delta, highscore_delta, user_id)
+        )
         conn.commit()
         cur.close()
         conn.close()
@@ -61,12 +68,14 @@ class Games(commands.Cog):
             ergebnis = -1
 
         if ergebnis == 1:
-            self.update_punkte(user_id, einsatz)
+            # Bei Gewinn steigen Punkte und Highscore
+            self.update_punkte(user_id, punkte_delta=einsatz, highscore_delta=einsatz)
             await ctx.send(f"🎉 Du hast gewonnen! Du wählst {erlaubt[wahl]}, der Bot wählt {erlaubt[bot_wahl]}. Du gewinnst **+{einsatz} 🍟**!")
         elif ergebnis == 0:
             await ctx.send(f"🤝 Unentschieden! Beide wählten {erlaubt[wahl]}. Dein Einsatz von {einsatz} 🍟 bleibt erhalten.")
         else:
-            self.update_punkte(user_id, -einsatz)
+            # Bei Verlust sinkt nur das Konto, Highscore bleibt unberührt
+            self.update_punkte(user_id, punkte_delta=-einsatz, highscore_delta=0)
             await ctx.send(f"😢 Verloren! Du wählst {erlaubt[wahl]}, der Bot wählt {erlaubt[bot_wahl]}. Du verlierst **-{einsatz} 🍟**.")
 
     # --- 2. ROULETTE ---
@@ -110,10 +119,11 @@ class Games(commands.Cog):
 
         if gewonnen:
             gewinn = einsatz * (faktor - 1)
-            self.update_punkte(user_id, gewinn)
-            await ctx.send(f"🎰 Die Kugel landete auf **{gefallene_zahl} ({farbe.upper())}**! Glückwunsch {ctx.author.mention}, du hast gewonnen und kriegst **+{einsatz * faktor} 🍟**!")
+            gesamt_plus = einsatz * faktor
+            self.update_punkte(user_id, punkte_delta=gewinn, highscore_delta=gewinn)
+            await ctx.send(f"🎰 Die Kugel landete auf **{gefallene_zahl} ({farbe.upper())}**! Glückwunsch {ctx.author.mention}, du hast gewonnen und kriegst **+{gesamt_plus} 🍟**!")
         else:
-            self.update_punkte(user_id, -einsatz)
+            self.update_punkte(user_id, punkte_delta=-einsatz, highscore_delta=0)
             await ctx.send(f"💸 Die Kugel landete auf **{gefallene_zahl} ({farbe.upper())}**. Leider verloren! Du verlierst **-{einsatz} 🍟**.")
 
     # --- 3. COINFLIP ---
@@ -137,10 +147,10 @@ class Games(commands.Cog):
         ergebnis = random.choice(["kopf", "zahl"])
 
         if wahl == ergebnis:
-            self.update_punkte(user_id, einsatz)
+            self.update_punkte(user_id, punkte_delta=einsatz, highscore_delta=einsatz)
             await ctx.send(f"🪙 Die Münze zeigt **{ergebnis.upper()}**! {ctx.author.mention} gewinnt **+{einsatz} 🍟**!")
         else:
-            self.update_punkte(user_id, -einsatz)
+            self.update_punkte(user_id, punkte_delta=-einsatz, highscore_delta=0)
             await ctx.send(f"🪙 Die Münze zeigt **{ergebnis.upper()}**! Leider daneben, {ctx.author.mention} verliert **-{einsatz} 🍟**.")
 
 async def setup(bot):
