@@ -25,7 +25,7 @@ async def lade_cogs():
 async def main():
     async with bot:
         await lade_cogs()
-        await bot.start(os.getenv("DISCORD_TOKEN"))
+        await bot.start(os.getenv("HAUPTBOT_DISCORD_TOKEN"))
 
 if __name__ == "__main__":
     asyncio.run(main())
