@@ -9,21 +9,20 @@ class UpdateCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def update_command(self, ctx, version: str = None, *, beschreibung: str = None):
         if not version:
-            await ctx.send("❌ Bitte gib eine Version an! Beispiel: `!update 0.5.1`")
+            await ctx.send("❌ Bitte gib eine Version an! Beispiel: `!update 0.5.1 Dein Text hier...`")
             return
 
         # -------------------------------------------------------------
-        # TRAGE HIER DEINE KANAL-ID EIN (die lange Zahl von deinem Update-Kanal)
+        # TRAGE HIER DEINE ECHTE UPDATE-KANAL-ID EIN
         # -------------------------------------------------------------
         UPDATE_CHANNEL_ID = 1533380004443066478  # <--- HIER DEINE ID REIN!
         
         target_channel = self.bot.get_channel(UPDATE_CHANNEL_ID)
-        
-        # Falls die ID vergessen wurde oder ungültig ist, nimmt er zur Sicherheit den aktuellen Kanal
         if not target_channel:
             target_channel = ctx.channel
 
-        # Fester Standard-Text mit all echten Werten und Features
+        # Wenn du keinen Text eingegeben hast, nimmt er den Standard-Text.
+        # Wenn du einen Text eingetippt hast, wird GENAU DEIN TEXT verwendet!
         if not beschreibung:
             beschreibung = (
                 "Aus dem Maschinenraum der Frittenschmiede (pom.world):\n\n"
@@ -47,12 +46,8 @@ class UpdateCog(commands.Cog):
         except:
             pass
 
-        # Postet das Update jetzt garantiert in den festgelegten Kanal!
+        # Postet das Update in den echten Kanal
         await target_channel.send(embed=embed)
-        
-        # Falls es in einen anderen Kanal geschickt wurde, kurz Info für dich im Chat
-        if target_channel != ctx.channel:
-            await ctx.send(f"✅ Update v{version} wurde erfolgreich in den Update-Kanal geschickt!", delete_after=5)
 
 async def setup(bot):
     await bot.add_cog(UpdateCog(bot))
