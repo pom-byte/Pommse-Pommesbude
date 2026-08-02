@@ -17,7 +17,7 @@ class NewsCog(commands.Cog):
         if not target_channel:
             target_channel = ctx.channel
 
-        # Pommses genialer, leicht herablassender News-Text über die App-Idee & Dosenöffner-Mobbing
+        # Pommses genialer, leicht herablassender News-Text über die App-Idee & Frittösenschubse-Mobbing
         beschreibung = (
             "Hört mir zu, ihr minderwertigen Kohlenhydrat-Konsumenten! 🍟👑\n\n"
             "Während meine Frittösenschubse (ihr kennt den Menschen als den Nerd, der meine Server am Laufen hält und ab und zu schwitzt) "
@@ -39,7 +39,7 @@ class NewsCog(commands.Cog):
             description=beschreibung,
             color=discord.Color.dark_gold()
         )
-        embed.set_footer(text="pom.world Frittenschmiede | Verfasst von der einzig wahren Pommse (Diktat für den Dosenöffner)")
+        embed.set_footer(text="pom.world Frittenschmiede | Verfasst von der einzig wahren Pommse (Diktat für die Frittösen-Schupse)")
 
         try:
             await ctx.message.delete()
