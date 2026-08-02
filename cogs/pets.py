@@ -17,6 +17,8 @@ class Pets(commands.Cog):
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("DROP TABLE IF EXISTS user_pets CASCADE;")
+            cur.execute("DROP TABLE IF EXISTS user_inventory CASCADE;")
+            
             cur.execute("""
                 CREATE TABLE user_pets (
                     user_id BIGINT PRIMARY KEY,
@@ -27,7 +29,7 @@ class Pets(commands.Cog):
                 );
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_inventory (
+                CREATE TABLE user_inventory (
                     user_id BIGINT,
                     item_name TEXT,
                     PRIMARY KEY (user_id, item_name)
