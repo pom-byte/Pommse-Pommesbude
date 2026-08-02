@@ -107,7 +107,14 @@ class Pets(commands.Cog):
             await ctx.send(f"⚠️ Du hast **{item_name.capitalize()}** bereits gekauft!")
             return
 
-        cur.execute("INSERT INTO user_pets (user_id, pet_name) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING;", (user_id, random.choice(self.ZUFALLS_NAMEN)))
+        cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (user_id,))
+        if not cur.fetchone():
+            zufalls_name = random.choice(self.ZUFALLS_NAMEN)
+            cur.execute("""
+                INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
+                VALUES (%s, %s, 100, 1, 'Keine');
+            """, (user_id, zufalls_name))
+
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
         cur.execute("INSERT INTO user_inventory (user_id, item_name) VALUES (%s, %s);", (user_id, item_name))
         
@@ -169,23 +176,23 @@ class Pets(commands.Cog):
             await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Füttern kostet **{futter_kosten} 🍟**, du hast aber nur **{userpunkte} 🍟**.")
             return
 
-        cur.execute("SELECT hunger, level FROM user_pets WHERE user_id = %s;", (user_id,))
+        cur.execute("SELECT hunger FROM user_pets WHERE user_id = %s;", (user_id,))
         row_pet = cur.fetchone()
+        
         if not row_pet:
             zufalls_name = random.choice(self.ZUFALLS_NAMEN)
-            cur.execute("INSERT INTO user_pets (user_id, pet_name, hunger) VALUES (%s, %s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id, zufalls_name))
-            hunger, level = 100, 1
+            cur.execute("""
+                INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
+                VALUES (%s, %s, 100, 1, 'Keine');
+            """, (user_id, zufalls_name))
+            hunger = 100
         else:
-            hunger, level = row_pet[0], row_pet[1]
+            hunger = row_pet[0]
 
         nuevo_hunger = min(100, hunger + 25)
 
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (futter_kosten, user_id))
-        cur.execute("""
-            INSERT INTO user_pets (user_id, hunger, pet_name) VALUES (%s, %s, %s)
-            ON CONFLICT (user_id) 
-            DO UPDATE SET hunger = %s;
-        """, (user_id, nuevo_hunger, random.choice(self.ZUFALLS_NAMEN), nuevo_hunger))
+        cur.execute("UPDATE user_pets SET hunger = %s WHERE user_id = %s;", (nuevo_hunger, user_id))
 
         conn.commit()
         cur.close()
