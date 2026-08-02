@@ -1,157 +1,200 @@
-import os
-import random
 import discord
 from discord.ext import commands
+import os
+import random
 import psycopg2
+
+def get_db_connection():
+    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
 
 class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.init_db()
 
-    def get_db_connection(self):
-        database_url = os.getenv("DATABASE_URL")
-        return psycopg2.connect(database_url, sslmode='require')
+    def init_db(self):
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_punkte (
+                    user_id BIGINT PRIMARY KEY,
+                    punkte INT DEFAULT 100
+                );
+            """)
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Fehler bei DB-Init in Games: {e}")
 
+    # Hilfsfunktion, um Punkte abzurufen oder zu erstellen
     def get_punkte(self, user_id):
-        conn = self.get_db_connection()
+        conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
         row = cur.fetchone()
+        if not row:
+            cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
+            conn.commit()
+            punkte = 100
+        else:
+            punkte = row[0]
         cur.close()
         conn.close()
-        return row[0] if row else 0
+        return punkte
 
-    def update_punkte(self, user_id, punkte_delta, highscore_delta=0):
-        conn = self.get_db_connection()
+    def update_punkte(self, user_id, menge):
+        conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, 0, 0) ON CONFLICT (user_id) DO NOTHING;", 
-            (user_id,)
-        )
-        cur.execute(
-            "UPDATE user_punkte SET punkte = punkte + %s, highscore = highscore + %s WHERE user_id = %s;", 
-            (punkte_delta, highscore_delta, user_id)
-        )
+        cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;", (user_id, menge, menge))
         conn.commit()
         cur.close()
         conn.close()
 
-    # --- 1. STEIN, SCHERE, PAPIER ---
-    @commands.command(name="ssp", aliases=["schere", "stein", "papier"])
-    async def ssp(self, ctx, wahl: str, einsatz: int):
-        wahl = wahl.lower()
-        erlaubt = {"stein": "🪨", "schere": "✂️", "papier": "📄"}
-
-        if wahl not in erlaubt:
-            await ctx.send("❌ Ungültige Wahl! Nutze: `!ssp <stein/schere/papier> <einsatz>`")
-            return
-        if einsatz <= 0:
-            await ctx.send("❌ Der Einsatz muss größer als 0 sein!")
-            return
-
-        user_id = ctx.author.id
-        kontostand = self.get_punkte(user_id)
-
-        if kontostand < einsatz:
-            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{kontostand} 🍟**.")
-            return
-
-        bot_wahl = random.choice(list(erlaubt.keys()))
-        
-        if wahl == bot_wahl:
-            ergebnis = 0
-        elif (wahl == "stein" and bot_wahl == "schere") or \
-             (wahl == "schere" and bot_wahl == "papier") or \
-             (wahl == "papier" and bot_wahl == "stein"):
-            ergebnis = 1
-        else:
-            ergebnis = -1
-
-        if ergebnis == 1:
-            # Bei Gewinn steigen Punkte und Highscore
-            self.update_punkte(user_id, punkte_delta=einsatz, highscore_delta=einsatz)
-            await ctx.send(f"🎉 Du hast gewonnen! Du wählst {erlaubt[wahl]}, der Bot wählt {erlaubt[bot_wahl]}. Du gewinnst **+{einsatz} 🍟**!")
-        elif ergebnis == 0:
-            await ctx.send(f"🤝 Unentschieden! Beide wählten {erlaubt[wahl]}. Dein Einsatz von {einsatz} 🍟 bleibt erhalten.")
-        else:
-            # Bei Verlust sinkt nur das Konto, Highscore bleibt unberührt
-            self.update_punkte(user_id, punkte_delta=-einsatz, highscore_delta=0)
-            await ctx.send(f"😢 Verloren! Du wählst {erlaubt[wahl]}, der Bot wählt {erlaubt[bot_wahl]}. Du verlierst **-{einsatz} 🍟**.")
-
-    # --- 2. ROULETTE ---
+    # --- 1. ROULETTE ---
     @commands.command(name="roulette")
-    async def roulette(self, ctx, wahl: str, einsatz: int):
+    async def roulette(self, ctx, einsatz: int, wahl: str):
+        user_id = ctx.author.id
         wahl = wahl.lower()
+
         if einsatz <= 0:
             await ctx.send("❌ Der Einsatz muss größer als 0 sein!")
             return
 
-        user_id = ctx.author.id
-        kontostand = self.get_punkte(user_id)
-
-        if kontostand < einsatz:
-            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{kontostand} 🍟**.")
+        userpunkte = self.get_punkte(user_id)
+        if userpunkte < einsatz:
+            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{userpunkte} 🍟**.")
             return
 
-        gefallene_zahl = random.randint(0, 10)
+        gueltige_wahlen = ["rot", "schwarz", "gruen", "schwarz/rot"] # support basic colors
+        # Erlauben wir: rot, schwarz, grün (oder 'green', 'red', 'black')
+        wahl_mapping = {"rot": "rot", "red": "rot", "schwarz": "schwarz", "black": "schwarz", "gruen": "gruen", "green": "gruen"}
         
-        if gefallene_zahl == 0:
-            farbe = "grün"
-        elif gefallene_zahl % 2 == 0:
-            farbe = "schwarz"
-        else:
-            farbe = "rot"
-
-        gewonnen = False
-        faktor = 0
-
-        if wahl in ["rot", "schwarz", "grün"]:
-            if wahl == farbe:
-                gewonnen = True
-                faktor = 2 if wahl != "grün" else 10
-        elif wahl.isdigit():
-            if int(wahl) == gefallene_zahl:
-                gewonnen = True
-                faktor = 10
-        else:
-            await ctx.send("❌ Ungültige Wahl! Nutze `!roulette rot <einsatz>`, `!roulette schwarz <einsatz>` oder eine Zahl von 0 bis 10.")
+        if wahl not in wahl_mapping:
+            await ctx.send("❌ Ungültige Wahl! Nutze: `!roulette <einsatz> <rot/schwarz/gruen>`")
             return
 
-        if gewonnen:
-            gewinn = einsatz * (faktor - 1)
-            gesamt_plus = einsatz * faktor
-            self.update_punkte(user_id, punkte_delta=gewinn, highscore_delta=gewinn)
-            await ctx.send(f"🎰 Die Kugel landete auf **{gefallene_zahl} ({farbe.upper())}**! Glückwunsch {ctx.author.mention}, du hast gewonnen und kriegst **+{gesamt_plus} 🍟**!")
+        gewaehlte_farbe = wahl_mapping[wahl]
+
+        # Roulette Rad: 0 = Grün (1/37 Chance), 1-18 = Rot, 19-36 = Schwarz (vereinfacht)
+        ergebnis_zahl = random.randint(0, 36)
+        if ergebnis_zahl == 0:
+            ergebnis_farbe = "gruen"
+        elif ergebnis_zahl % 2 == 0:
+            ergebnis_farbe = "schwarz"
         else:
-            self.update_punkte(user_id, punkte_delta=-einsatz, highscore_delta=0)
-            await ctx.send(f"💸 Die Kugel landete auf **{gefallene_zahl} ({farbe.upper())}**. Leider verloren! Du verlierst **-{einsatz} 🍟**.")
+            ergebnis_farbe = "rot"
 
-    # --- 3. COINFLIP ---
-    @commands.command(name="coinflip", aliases=["flip", "muenze"])
-    async def coinflip(self, ctx, wahl: str, einsatz: int):
-        wahl = wahl.lower()
-        if wahl not in ["kopf", "zahl"]:
-            await ctx.send("❌ Bitte wähle entweder `kopf` oder `zahl`! (Beispiel: `!coinflip kopf 50`)")
-            return
-        if einsatz <= 0:
-            await ctx.send("❌ Der Einsatz muss größer als 0 sein!")
-            return
+        embed = discord.Embed(
+            title="🎰 Knusper-Casino Roulette",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Gezogene Zahl", value=f"**{ergebnis_zahl}** ({ergebnis_farbe.capitalize()})", inline=False)
 
+        if gewaehlte_farbe == ergebnis_farbe:
+            # Multiplikator: Grün gibt x14, Rot/Schwarz x2
+            faktor = 14 if ergebnis_farbe == "gruen" else 2
+            gewinn = einsatz * faktor
+            self.update_punkte(user_id, gewinn - einsatz) # Netto-Gewinn draufrechnen
+            embed.description = f"🎉 **Gewonnen!** Du hast auf **{gewaehlte_farbe.capitalize()}** gesetzt und **{gewinn} 🍟** abgeräumt!"
+            embed.color = discord.Color.green()
+        else:
+            self.update_punkte(user_id, -einsatz)
+            embed.description = f"😢 **Verloren!** Die Kugel landete auf {ergebnis_farbe.capitalize()}. Du hast **{einsatz} 🍟** verloren."
+            embed.color = discord.Color.dark_red()
+
+        neuer_stand = self.get_punkte(user_id)
+        embed.set_footer(text=f"Neuer Kontostand: {neuer_stand} 🍟")
+        await ctx.send(embed=embed)
+
+    # --- 2. SCHERE, STEIN, PAPIER ---
+    @commands.command(name="ssp", aliases=["scheresteinpapier"])
+    async def ssp(self, ctx, wahl: str, einsatz: int = 0):
         user_id = ctx.author.id
-        kontostand = self.get_punkte(user_id)
+        wahl = wahl.lower()
+        optionen = {"schere": "✂️", "stein": "🪨", "papier": "📄"}
 
-        if kontostand < einsatz:
-            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{kontostand} 🍟**.")
+        if wahl not in optionen:
+            await ctx.send("❌ Ungültige Wahl! Nutze: `!ssp <schere/stein/papier> [einsatz]`")
             return
 
-        ergebnis = random.choice(["kopf", "zahl"])
+        if einsatz > 0:
+            userpunkte = self.get_punkte(user_id)
+            if userpunkte < einsatz:
+                await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte für diesen Einsatz ({userpunkte} 🍟 vorhanden).")
+                return
 
-        if wahl == ergebnis:
-            self.update_punkte(user_id, punkte_delta=einsatz, highscore_delta=einsatz)
-            await ctx.send(f"🪙 Die Münze zeigt **{ergebnis.upper()}**! {ctx.author.mention} gewinnt **+{einsatz} 🍟**!")
+        bot_wahl = random.choice(list(optionen.keys()))
+
+        ergebnis_text = ""
+        gewinn_verlust = 0
+
+        if wahl == bot_wahl:
+            ergebnis_text = "🤝 **Unentschieden!** Niemand gewinnt."
+        elif (
+            (wahl == "schere" and bot_wahl == "papier") or
+            (wahl == "stein" and bot_wahl == "schere") or
+            (wahl == "papier" and bot_wahl == "stein")
+        ):
+            ergebnis_text = f"🎉 **Gewonnen!** Du hast mit {optionen[wahl]} gegen {optionen[bot_wahl]} gewonnen!"
+            gewinn_verlust = einsatz
         else:
-            self.update_punkte(user_id, punkte_delta=-einsatz, highscore_delta=0)
-            await ctx.send(f"🪙 Die Münze zeigt **{ergebnis.upper()}**! Leider daneben, {ctx.author.mention} verliert **-{einsatz} 🍟**.")
+            ergebnis_text = f"😢 **Verloren!** Der Bot hat mit {optionen[bot_wahl]} gegen {optionen[wahl]} gewonnen."
+            gewinn_verlust = -einsatz
+
+        if einsatz > 0:
+            self.update_punkte(user_id, gewinn_verlust)
+
+        embed = discord.Embed(
+            title="✂️ Schere, Stein, Papier",
+            description=f"Du: {optionen[wahl]} | Bot: {optionen[bot_wahl]}\n\n{ergebnis_text}",
+            color=discord.Color.blue()
+        )
+        if einsatz > 0:
+            embed.set_footer(text=f"Einsatz: {einsatz} 🍟 | Neuer Kontostand: {self.get_punkte(user_id)} 🍟")
+        
+        await ctx.send(embed=embed)
+
+    # --- 3. WÜRFEL-SPIEL ---
+    @commands.command(name="wuerfel", aliases=["dice", "roll"])
+    async def wuerfel(self, ctx, einsatz: int = 0):
+        user_id = ctx.author.id
+
+        if einsatz > 0:
+            userpunkte = self.get_punkte(user_id)
+            if userpunkte < einsatz:
+                await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{userpunkte} 🍟**.")
+                return
+
+        user_wurf = random.randint(1, 6)
+        bot_wurf = random.randint(1, 6)
+
+        embed = discord.Embed(title="🎲 Würfel-Duell", color=discord.Color.gold())
+        embed.add_field(name=f"Dein Würfel ({ctx.author.name})", value=f"🎲 **{user_wurf}**", inline=True)
+        embed.add_field(name="Bot Würfel", value=f"🎲 **{bot_wurf}**", inline=True)
+
+        if einsatz > 0:
+            if user_wurf > bot_wurf:
+                self.update_punkte(user_id, einsatz)
+                embed.description = f"🎉 **Gewonnen!** Du hast den Bot übertroffen und **{einsatz} 🍟** gewonnen!"
+                embed.color = discord.Color.green()
+            elif user_wurf < bot_wurf:
+                self.update_punkte(user_id, -einsatz)
+                embed.description = f"😢 **Verloren!** Der Bot hat höher gewürfelt. Du verlierst **{einsatz} 🍟**."
+                embed.color = discord.Color.red()
+            else:
+                embed.description = f"🤝 **Unentschieden!** Dein Einsatz wurde zurückgegeben."
+            embed.set_footer(text=f"Kontostand: {self.get_punkte(user_id)} 🍟")
+        else:
+            if user_wurf > bot_wurf:
+                embed.description = f"🎉 **Du hast gewonnen!** ({user_wurf} vs {bot_wurf})"
+            elif user_wurf < bot_wurf:
+                embed.description = f"😢 **Der Bot hat gewonnen!** ({user_wurf} vs {bot_wurf})"
+            else:
+                embed.description = f"🤝 **Unentschieden!** Beide hatten eine {user_wurf}."
+
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Games(bot))
