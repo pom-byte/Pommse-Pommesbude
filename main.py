@@ -1,33 +1,30 @@
 import os
-import random
-import datetime
+import asyncio
 import discord
 from discord.ext import commands
 from flask import Flask
 from threading import Thread
 from dotenv import load_dotenv
-import psycopg2
 
-# Lädt die .env-Datei lokal (auf Render greift er stattdessen direkt auf die Environment-Variablen zu)
 load_dotenv()
 
-# Mini-Flask-Server, damit Render den Web Service nicht wegen fehlendem Port abbricht
+# Webserver für Render Keep-Alive
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Pommse-Pommesbude ist online und frittiert!"
+    return "Pommse ist online und frittiert!"
 
 def run():
-    app.run(host='0.0.0.0', port=100000)
+    app.run(host='0.0.0.0', port=10000)
 
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
+Thread(target=run).start()
 
 # Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
@@ -35,7 +32,7 @@ async def on_ready():
     print(f"Eingeloggt als {bot.user} (ID: {bot.user.id})")
     print("Pommse-Universum ist online in der Cloud! 🍟🚀")
 
-# Cogs automatisch aus dem Ordner laden
+# Funktion zum Laden der Cogs
 async def lade_cogs():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
@@ -46,13 +43,10 @@ async def lade_cogs():
             except Exception as e:
                 print(f"Fehler beim Laden von Cog {cog_name}: {e}")
 
-async def main():
-    async with bot:
-        await lade_cogs()
-        # Hier holt er sich den Token jetzt wieder sauber über os.getenv (oder du setzt deinen Token hier direkt ein, falls Render zickt)
-        token = os.getenv("HAUPTBOT_DISCORD_TOKEN") 
-        await bot.start(token)
+@bot.event
+async def setup_hook():
+    await lade_cogs()
 
-if __name__ == "__main__":
-    keep_alive()
-    asyncio.run(main())
+# Bot starten
+token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
+bot.run(token)
