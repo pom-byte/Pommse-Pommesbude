@@ -16,8 +16,9 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+            cur.execute("DROP TABLE IF EXISTS user_pets CASCADE;")
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_pets (
+                CREATE TABLE user_pets (
                     user_id BIGINT PRIMARY KEY,
                     pet_name TEXT,
                     hunger INT DEFAULT 100,
