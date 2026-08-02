@@ -56,26 +56,28 @@ class Games(commands.Cog):
 
         bot_wahl = random.choice(optionen)
         
-        # Auswertung
+        # Auswertung & Punktewertung (1:1 Quote bei Sieg)
         if wahl == bot_wahl:
-            ergebnis = "Unentschieden! Dein Einsatz wurde dir zurückgegeben."
+            ergebnis = f"🤝 **Unentschieden!** Niemand gewinnt, dein Einsatz von **{einsatz} 🍟** bleibt sicher."
             gewinn = 0
         elif (wahl == "schere" and bot_wahl == "papier") or \
              (wahl == "stein" and bot_wahl == "schere") or \
              (wahl == "papier" and bot_wahl == "stein"):
-            ergebnis = f"🎉 **Gewonnen!** Du hast den Bot abgezockt!"
+            ergebnis = f"🎉 **Gewonnen!** Du hast den Bot abgezockt und **+{einsatz}** Knusper-Punkte eingesackt!"
             gewinn = einsatz
         else:
-            ergebnis = f"😢 **Verloren!** Der Bot war schneller."
+            ergebnis = f"😢 **Verloren!** Der Bot war schneller und hat dir **-{einsatz}** Knusper-Punkte abgeknöpft."
             gewinn = -einsatz
 
-        self.update_points(str(ctx.author.id), gewinn)
+        if gewinn != 0:
+            self.update_points(str(ctx.author.id), gewinn)
+            
         neuer_stand = self.get_points(str(ctx.author.id))
 
         embed = discord.Embed(
             title="✂️ Schere - Stein - Papier",
-            description=f"Du wahlst: **{wahl.capitalize()}**\nBot wählt: **{bot_wahl.capitalize()}**\n\n{ergebnis}",
-            color=discord.Color.orange()
+            description=f"Deine Wahl: **{wahl.capitalize()}**\nBot-Wahl: **{bot_wahl.capitalize()}**\n\n{ergebnis}",
+            color=discord.Color.green() if gewinn > 0 else (discord.Color.orange() if gewinn == 0 else discord.Color.red())
         )
         embed.set_footer(text=f"Neuer Kontostand: {neuer_stand} Knusper-Punkte 🍟")
         await ctx.send(embed=embed)
