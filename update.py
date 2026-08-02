@@ -9,7 +9,7 @@ class UpdateCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def update_command(self, ctx, version: str = None, *, beschreibung: str = None):
         if not version:
-            await ctx.send("❌ Bitte gib eine Version an! Beispiel: `!update 0.5.1 Dein Text hier...`")
+            await ctx.send("❌ Bitte gib eine Version an! Beispiel: `!update 0.6.0 Dein Text hier...`")
             return
 
         # -------------------------------------------------------------
@@ -21,17 +21,17 @@ class UpdateCog(commands.Cog):
         if not target_channel:
             target_channel = ctx.channel
 
-        # Wenn du keinen Text eingegeben hast, nimmt er den Standard-Text.
-        # Wenn du einen Text eingetippt hast, wird GENAU DEIN TEXT verwendet!
+        # Wenn kein eigener Text übergeben wurde, wird dieser Standard-Text mit den aktuellen Funktionen verwendet
         if not beschreibung:
             beschreibung = (
                 "Aus dem Maschinenraum der Frittenschmiede (pom.world):\n\n"
-                "Ein großes Lob an meinen Erschaffer: Der Bot läuft jetzt stabil in der Cloud und das Imperium wächst! 🍟🔥\n\n"
+                "Ein großes Lob an unseren Fortschritt: Das Casino und die Features laufen jetzt stabil und reibungslos! 🍟🔥\n\n"
                 "🍟 **Was ist neu in diesem Update?**\n"
-                "• 🎣 **Angeln:** Die Ruten zappeln wieder, holt euch die dicksten Fische aus dem Frittierfett!\n"
-                "• 💰 **Knusper-Punkte & Economy:** Befehle drücken, Knusper-Punkte scheffeln und den Kontostand explodieren lassen!\n"
-                "• 🐾 **Pets:** Eure treuen Begleiter sind am Start und passen auf eure Fritten auf!\n"
-                "• 🚀 **Cloud-Power:** 24/7 online dank Render und bombensicherem Webserver!"
+                "• 🎰 **Casino Roulette:** Setze deine Knusper-Punkte auf Rot, Schwarz oder Grün und räume ab!\n"
+                "• ✂️ **Schere, Stein, Papier:** Tritt mit optionalem Einsatz gegen den Bot an!\n"
+                "• 🎲 **Würfel-Duell:** Wer wirft die höhere Zahl und gewinnt das Duell?\n"
+                "• 🐾 **Pets & Menü:** Füttere deine treuen Begleiter, style sie mit Accessoires und sammle Punkte!\n"
+                "• 💰 **Robuste Economy:** Sichere Punkteverwaltung für alle Spieler!"
             )
 
         embed = discord.Embed(
@@ -46,7 +46,7 @@ class UpdateCog(commands.Cog):
         except:
             pass
 
-        # Postet das Update in den echten Kanal
+        # Postet das Update in den Kanal
         await target_channel.send(embed=embed)
 
 async def setup(bot):
