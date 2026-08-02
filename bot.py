@@ -73,7 +73,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     init_db()
-    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})")
+    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt as {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -204,7 +204,6 @@ async def stammgast(ctx, member: discord.Member):
 @commands.has_permissions(administrator=True)
 async def update(ctx, version: str = "0.4"):
     """Pommse verkündet die neuesten Updates und lästert über seine Menschen"""
-    # Hier wurde der Kanalname direkt auf deinen echten Kanal angepasst:
     target_channel = discord.utils.get(ctx.guild.text_channels, name="👉-updates")
     if not target_channel:
         target_channel = ctx.channel
@@ -233,7 +232,8 @@ async def update(ctx, version: str = "0.4"):
         inline=False
     )
     
-    embed.set_footer(text="Gezogen aus der krossen KI-Fritteuse von pom.world | Update 0.4")
+    # Hier wurde der Text bereinigt (kein Verweis mehr auf KI)
+    embed.set_footer(text="pom.world Frittenschmiede | Offizielle Patchnotes")
     
     await target_channel.send(embed=embed)
 
