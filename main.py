@@ -2,7 +2,24 @@ import discord
 from discord.ext import commands
 import os
 import asyncio
+from flask import Flask
+from threading import Thread
 
+# Mini-Flask-Server für Render (damit der Port-Check glücklich ist)
+app = Flask("")
+
+@app.route("/")
+def home():
+    return "Pommse-Bot ist online und frittiert fröhlich vor sich hin! 🍟"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=8080)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.start()
+
+# Ab hier dein normaler Bot-Code
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -25,7 +42,8 @@ async def lade_cogs():
 async def main():
     async with bot:
         await lade_cogs()
-        await bot.start(os.getenv("HAUPTBOT_DISCORD_TOKEN"))
+        await bot.start("HAUPTBOT_DISCORD_TOKEN") # Oder wieder os.getenv, je nachdem wie du es gelöst hast
 
 if __name__ == "__main__":
+    keep_alive()  # Startet den Flask-Server im Hintergrund
     asyncio.run(main())
