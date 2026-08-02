@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import os
 import random
 import psycopg2
@@ -11,6 +11,10 @@ class Pets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.init_db()
+        self.hunger_loop.start() # Startet den automatischen Hunger-Timer im Hintergrund
+
+    def cog_unload(self):
+        self.hunger_loop.cancel()
 
     def init_db(self):
         try:
@@ -37,6 +41,24 @@ class Pets(commands.Cog):
             conn.close()
         except Exception as e:
             print(f"Fehler bei DB-Init in Pets: {e}")
+
+    # Automatischer Task: Zieht allen Pets alle 4 Stunden 15 Hunger-Punkte ab
+    @tasks.loop(hours=4)
+    async def hunger_loop(self):
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            # Zieht 15 Hunger ab, aber minimal bis 0
+            cur.execute("UPDATE user_pets SET hunger = GREATEST(0, hunger - 15);")
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Fehler im Hunger-Loop: {e}")
+
+    @hunger_loop.before_loop
+    async def before_hunger_loop(self):
+        await self.bot.wait_until_ready()
 
     ZUFALLS_NAMEN = [
         "Knuffi die Fritte",
@@ -69,7 +91,7 @@ class Pets(commands.Cog):
         )
         for item, daten in self.SHOP_ANGEBOT.items():
             embed.add_field(
-                name=f"{item.capitalize()} ({daten['preis']} 🍟)",
+                name=f"{item.replace('_', ' ').capitalize()} ({daten['preis']} 🍟)",
                 value=f"*{daten['desc']}*\nTyp: {daten['typ']}",
                 inline=False
             )
@@ -107,35 +129,28 @@ class Pets(commands.Cog):
             await ctx.send(f"⚠️ Du hast **{item_name.replace('_', ' ').capitalize()}** bereits gekauft!")
             return
 
-        cur.execute("SELECT user_id, accessoires FROM user_pets WHERE user_id = %s;", (user_id,))
-        pet_row = cur.fetchone()
-        
-        if not pet_row:
+        cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (user_id,))
+        if not cur.fetchone():
             zufalls_name = random.choice(self.ZUFALLS_NAMEN)
             cur.execute("""
                 INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
                 VALUES (%s, %s, 100, 1, 'Keine');
             """, (user_id, zufalls_name))
-            aktuelle_acc = "Keine"
-        else:
-            aktuelle_acc = pet_row[1]
 
-        # Punkte abziehen und Inventar ergänzen
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
         cur.execute("INSERT INTO user_inventory (user_id, item_name) VALUES (%s, %s);", (user_id, item_name))
         
-        # Accessoires kombinieren statt überschreiben
+        # Alle Accessoires und Upgrades aus dem Inventar auslesen und kombinieren
         if item_typ in ["Accessoire", "Upgrade"]:
-            lesbarer_name = item_name.replace("_", " ").capitalize()
-            if aktuelle_acc == "Keine" or not aktuelle_acc:
-                neue_acc = lesbarer_name
-            else:
-                # Prüfen, ob es schon in der Liste steht, sonst anhängen
-                liste = [a.strip() for a in aktuelle_acc.split(",")]
-                if lesbarer_name not in liste:
-                    liste.append(lesbarer_name)
-                neue_acc = ", ".join(liste)
-
+            cur.execute("SELECT item_name FROM user_inventory WHERE user_id = %s;", (user_id,))
+            alle_items = cur.fetchall()
+            
+            gekauft_liste = []
+            for (it,) in alle_items:
+                if it in self.SHOP_ANGEBOT and self.SHOP_ANGEBOT[it]["typ"] in ["Accessoire", "Upgrade"]:
+                    gekauft_liste.append(it.replace("_", " ").capitalize())
+            
+            neue_acc = ", ".join(gekauft_liste) if gekauft_liste else "Keine"
             cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (neue_acc, user_id))
 
         conn.commit()
@@ -160,6 +175,16 @@ class Pets(commands.Cog):
             pet_name, hunger, level, accessoires = zufalls_name, 100, 1, "Keine"
         else:
             pet_name, hunger, level, accessoires = row[0], row[1], row[2], row[3]
+            
+            # Automatischer Abgleich mit dem Inventar, damit alles korrekt angezeigt wird
+            cur.execute("SELECT item_name FROM user_inventory WHERE user_id = %s;", (user_id,))
+            alle_items = cur.fetchall()
+            gekauft_liste = []
+            for (it,) in alle_items:
+                if it in self.SHOP_ANGEBOT and self.SHOP_ANGEBOT[it]["typ"] in ["Accessoire", "Upgrade"]:
+                    gekauft_liste.append(it.replace("_", " ").capitalize())
+            if gekauft_liste:
+                accessoires = ", ".join(gekauft_liste)
         
         cur.close()
         conn.close()
@@ -169,7 +194,7 @@ class Pets(commands.Cog):
             description=f"Name: **{pet_name}**\n",
             color=discord.Color.orange()
         )
-        embed.add_field(name="Hunger-Status", value=f"{'🍟' * (hunger // 20)} ({hunger}/100)", inline=False)
+        embed.add_field(name="Hunger-Status", value=f"{'🍟' * max(0, (hunger // 20))} ({hunger}/100)", inline=False)
         embed.add_field(name="Level", value=f"⭐ {level}", inline=True)
         embed.add_field(name="Ausstattung", value=f"✨ {accessoires}", inline=True)
         embed.set_footer(text="Füttere mit !fuettern oder benenne es mit !petumbenennen um!")
