@@ -10,7 +10,7 @@ class Welcome(commands.Cog):
         # -------------------------------------------------------------
         # TRAGE HIER DIE ID DEINES WILLKOMMENS-KANALS EIN
         # -------------------------------------------------------------
-        WILLKOMMENS_KANAL_ID = 1533380004443066478  # <--- HIER DEINE KANAL-ID REIN!
+        WILLKOMMENS_KANAL_ID = 1533379853716557935  # <--- HIER DEINE KANAL-ID REIN!
         
         channel = self.bot.get_channel(WILLKOMMENS_KANAL_ID)
         if not channel:
