@@ -134,7 +134,8 @@ async def on_message(message):
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
-SPITZNAMEN_LISTE = [
+# SPITZNAMEN_LISTE =  
+[
     "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
@@ -236,8 +237,6 @@ async def update(ctx, version: str = "0.4"):
     embed.set_footer(text="Gezogen aus der krossen KI-Fritteuse von pom.world | Update 0.4")
     
     await target_channel.send(embed=embed)
-    if target_channel != ctx.channel:
-        await ctx.send(f"✅ Update {version} wurde erfolgreich im Kanal {target_channel.mention} veröffentlicht!")
 
 
 @bot.command(name="orakel", aliases=["frage", "8ball"])
@@ -349,7 +348,7 @@ async def necken(ctx, member: discord.Member = None):
         "Ganz ehrlich, du bist auch nur 'ne ungewaschene Kartoffel. 🥔",
         "Du wurdest wohl etwas zu lange im kalten Fett vergessen, was? 🛢️",
         "Du hast die Knusprigkeit einer 3 Tage alten Supermarkt-Pommes. 🥴",
-        "Dein Aim ist matschiger als 'ne Portion Pommes im Regen. 🌧️🍟",
+        "Dein Aim ist matschiger as 'ne Portion Pommes im Regen. 🌧️🍟",
         "Red weiter, du verbranntes Fritten-Endstück! 🔥",
         "Du fiese Fritte! 🍟",
         "Na, wieder mal im falschen Fett gebadet? 🧼🛢️",
