@@ -16,11 +16,9 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute("DROP TABLE IF EXISTS user_pets CASCADE;")
-            cur.execute("DROP TABLE IF EXISTS user_inventory CASCADE;")
-            
+            # WICHTIG: Kein DROP TABLE mehr, damit eure Daten und Pets erhalten bleiben!
             cur.execute("""
-                CREATE TABLE user_pets (
+                CREATE TABLE IF NOT EXISTS user_pets (
                     user_id BIGINT PRIMARY KEY,
                     pet_name TEXT,
                     hunger INT DEFAULT 100,
@@ -29,7 +27,7 @@ class Pets(commands.Cog):
                 );
             """)
             cur.execute("""
-                CREATE TABLE user_inventory (
+                CREATE TABLE IF NOT EXISTS user_inventory (
                     user_id BIGINT,
                     item_name TEXT,
                     PRIMARY KEY (user_id, item_name)
@@ -247,7 +245,7 @@ class Pets(commands.Cog):
         if not sender_pet:
             cur.close()
             conn.close()
-            await ctx.send("❌ Du hast gar kein Knusper-Pet, das du verschenken könntest! Tippe erst `!pet`.")
+            await ctx.send("❌ Du gar kein Knusper-Pet, das du verschenken könntest! Tippe erst `!pet`.")
             return
 
         cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (empfaenger_id,))
