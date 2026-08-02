@@ -27,11 +27,11 @@ async def on_ready():
     print("Pommse-Universum ist online in der Cloud! 🍟🚀")
 
 async def lade_cogs():
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py"):
+    for filename in os.listdir("."):
+        if filename.endswith(".py") and filename != "main.py":
             cog_name = filename[:-3]
             try:
-                await bot.load_extension(f"cogs.{cog_name}")
+                await bot.load_extension(cog_name)
                 print(f"Cog erfolgreich geladen: {cog_name}")
             except Exception as e:
                 print(f"Fehler beim Laden von Cog {cog_name}: {e}")
@@ -40,7 +40,6 @@ async def lade_cogs():
 async def setup_hook():
     await lade_cogs()
 
-# Startet Flask in einem sicheren Daemon-Thread, der sofort aktiv ist
 def run_flask():
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 
@@ -49,6 +48,5 @@ if __name__ == "__main__":
     t.daemon = True
     t.start()
     
-    # Bot starten
     token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
     bot.run(token)
