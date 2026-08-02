@@ -36,6 +36,12 @@ class Pets(commands.Cog):
                     PRIMARY KEY (user_id, item_name)
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_punkte (
+                    user_id BIGINT PRIMARY KEY,
+                    punkte INT DEFAULT 100
+                );
+            """)
             conn.commit()
             cur.close()
             conn.close()
@@ -112,7 +118,13 @@ class Pets(commands.Cog):
 
         cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
         row = cur.fetchone()
-        userpunkte = row[0] if row else 0
+        
+        if not row:
+            cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100);", (user_id,))
+            conn.commit()
+            userpunkte = 100
+        else:
+            userpunkte = row[0]
 
         if userpunkte < preis:
             cur.close()
@@ -208,7 +220,9 @@ class Pets(commands.Cog):
         row_eko = cur.fetchone()
         
         if not row_eko:
-            userpunkte = 0
+            cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100);", (user_id,))
+            conn.commit()
+            userpunkte = 100
         else:
             userpunkte = row_eko[0]
 
