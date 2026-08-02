@@ -16,6 +16,7 @@ class Games(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+            # Sicherstellen, dass die Tabelle existiert und 'punkte' heißt
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_punkte (
                     user_id BIGINT PRIMARY KEY,
@@ -28,29 +29,42 @@ class Games(commands.Cog):
         except Exception as e:
             print(f"Fehler bei DB-Init in Games: {e}")
 
-    # Hilfsfunktion, um Punkte abzurufen oder zu erstellen
+    # Sichere Hilfsfunktion für Punkte
     def get_punkte(self, user_id):
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
-        row = cur.fetchone()
-        if not row:
-            cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
-            conn.commit()
-            punkte = 100
-        else:
-            punkte = row[0]
-        cur.close()
-        conn.close()
-        return punkte
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
+                conn.commit()
+                punkte = 100
+            else:
+                punkte = row[0]
+            cur.close()
+            conn.close()
+            return punkte
+        except Exception as e:
+            print(f"Fehler bei get_punkte: {e}")
+            return 100
 
     def update_punkte(self, user_id, menge):
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;", (user_id, menge, menge))
-        conn.commit()
-        cur.close()
-        conn.close()
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            # Erst prüfen ob User existiert
+            cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s);", (user_id, 100 + menge))
+            else:
+                cur.execute("UPDATE user_punkte SET punkte = punkte + %s WHERE user_id = %s;", (menge, user_id))
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Fehler bei update_punkte: {e}")
 
     # --- 1. ROULETTE ---
     @commands.command(name="roulette")
@@ -67,9 +81,12 @@ class Games(commands.Cog):
             await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{userpunkte} 🍟**.")
             return
 
-        gueltige_wahlen = ["rot", "schwarz", "gruen", "schwarz/rot"] # support basic colors
-        # Erlauben wir: rot, schwarz, grün (oder 'green', 'red', 'black')
-        wahl_mapping = {"rot": "rot", "red": "rot", "schwarz": "schwarz", "black": "schwarz", "gruen": "gruen", "green": "gruen"}
+        # Flexibles Mapping für Farben (Deutsch & Englisch)
+        wahl_mapping = {
+            "rot": "rot", "red": "rot",
+            "schwarz": "schwarz", "black": "schwarz",
+            "gruen": "gruen", "green": "gruen", "grün": "gruen"
+        }
         
         if wahl not in wahl_mapping:
             await ctx.send("❌ Ungültige Wahl! Nutze: `!roulette <einsatz> <rot/schwarz/gruen>`")
@@ -77,7 +94,7 @@ class Games(commands.Cog):
 
         gewaehlte_farbe = wahl_mapping[wahl]
 
-        # Roulette Rad: 0 = Grün (1/37 Chance), 1-18 = Rot, 19-36 = Schwarz (vereinfacht)
+        # Roulette Rad: 0 = Grün (1/37), Rest Rot/Schwarz
         ergebnis_zahl = random.randint(0, 36)
         if ergebnis_zahl == 0:
             ergebnis_farbe = "gruen"
@@ -93,15 +110,15 @@ class Games(commands.Cog):
         embed.add_field(name="Gezogene Zahl", value=f"**{ergebnis_zahl}** ({ergebnis_farbe.capitalize()})", inline=False)
 
         if gewaehlte_farbe == ergebnis_farbe:
-            # Multiplikator: Grün gibt x14, Rot/Schwarz x2
             faktor = 14 if ergebnis_farbe == "gruen" else 2
             gewinn = einsatz * faktor
-            self.update_punkte(user_id, gewinn - einsatz) # Netto-Gewinn draufrechnen
-            embed.description = f"🎉 **Gewonnen!** Du hast auf **{gewaehlte_farbe.capitalize()}** gesetzt und **{gewinn} 🍟** abgeräumt!"
+            netto_gewinn = gewinn - einsatz
+            self.update_punkte(user_id, netto_gewinn)
+            embed.description = f"🎉 **Gewonnen!** Die Kugel landete auf **{ergebnis_farbe.capitalize()}**. Du hast **{gewinn} 🍟** abgeräumt!"
             embed.color = discord.Color.green()
         else:
             self.update_punkte(user_id, -einsatz)
-            embed.description = f"😢 **Verloren!** Die Kugel landete auf {ergebnis_farbe.capitalize()}. Du hast **{einsatz} 🍟** verloren."
+            embed.description = f"😢 **Verloren!** Die Kugel landete auf **{ergebnis_farbe.capitalize()}**. Du hast **{einsatz} 🍟** verloren."
             embed.color = discord.Color.dark_red()
 
         neuer_stand = self.get_punkte(user_id)
@@ -126,12 +143,11 @@ class Games(commands.Cog):
                 return
 
         bot_wahl = random.choice(list(optionen.keys()))
-
-        ergebnis_text = ""
         gewinn_verlust = 0
+        ergebnis_text = ""
 
         if wahl == bot_wahl:
-            ergebnis_text = "🤝 **Unentschieden!** Niemand gewinnt."
+            ergebnis_text = "🤝 **Unentschieden!** Einsatz zurück."
         elif (
             (wahl == "schere" and bot_wahl == "papier") or
             (wahl == "stein" and bot_wahl == "schere") or
@@ -143,7 +159,7 @@ class Games(commands.Cog):
             ergebnis_text = f"😢 **Verloren!** Der Bot hat mit {optionen[bot_wahl]} gegen {optionen[wahl]} gewonnen."
             gewinn_verlust = -einsatz
 
-        if einsatz > 0:
+        if einsatz > 0 and gewinn_verlust != 0:
             self.update_punkte(user_id, gewinn_verlust)
 
         embed = discord.Embed(
