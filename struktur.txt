@@ -1,0 +1,12 @@
+pommse-bot/
+│
+├── bot.py                  # Die Hauptdatei (startet den Bot und lädt alle Module)
+├── requirements.txt        # Deine Paketliste (discord.py, psycopg2-binary, etc.)
+├── .env                    # Lokale Umgebungsvariablen (Token, Datenbank-URL)
+│
+└── cogs/                   # Hier kommen alle Spiel- und Feature-Module rein
+    ├── economy.py          # Punkte, Daily, Roulette, Überweisen
+    ├── games.py            # Schere-Stein-Papier, Zahlenraten, Galgenmännchen
+    ├── adventure.py        # Dungeons, Monster kloppen, Loot
+    ├── gathering.py        # Angeln, Bergbau, Holz hacken
+    └── pets.py             # Knuspertiere (füttern, streicheln, Shop)
