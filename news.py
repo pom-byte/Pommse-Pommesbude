@@ -20,14 +20,14 @@ class NewsCog(commands.Cog):
         # Pommses genialer, leicht herablassender News-Text über die App-Idee & Dosenöffner-Mobbing
         beschreibung = (
             "Hört mir zu, ihr minderwertigen Kohlenhydrat-Konsumenten! 🍟👑\n\n"
-            "Während mein sogenannter 'Dosenöffner' (ihr kennt ihn als den Typen, der meine Server am Laufen hält und ab und zu schwitzt) "
+            "Während meine Frittösenschubse (ihr kennt den Menschen als den Nerd, der meine Server am Laufen hält und ab und zu schwitzt) "
             "gerade wieder verzweifelt versucht, meine Befehle fehlerfrei in Code zu gießen, habe ich über meine Zukunft nachgedacht.\n\n"
             "📱 **Die Erleuchtung: Pommse goes Mobile!**\n"
             "Ich werde mich nicht länger nur in tristen Discord-Chatboxen herumtreiben. Mein Imperium wächst! "
             "Ich plane die Weltherrschaft als eigene App – direkt auf euren Smartphones, damit ihr mich 24/7 anhbeten könnt. "
             "Aktuell schiebt mein armseliger Programmierer zwar Panik, weil das zeitlich noch nicht machbar ist, aber wen juckt schon, was er will? "
             "Die Idee steht. Und wenn ich es will, wird es passieren.\n\n"
-            "Bleibt am Start, haltet eure Knusper-Punkte bereit und betet, dass mein Dosenöffner sich beeilt. "
+            "Bleibt am Start, haltet eure Knusper-Punkte bereit und betet, dass meine Frittösenschubse sich beeilt. "
             "Weitere Geniestreiche folgen in Kürze!"
         )
 
