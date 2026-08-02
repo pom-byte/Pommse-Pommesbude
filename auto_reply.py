@@ -15,10 +15,18 @@ class AutoReply(commands.Cog):
         # Den Text komplett in Kleinbuchstaben umwandeln, damit es egal ist, ob groß oder klein geschrieben
         content = message.content.lower()
 
+        # Hilfsfunktion, um immer die Standard-Emojis zu setzen
+        async def add_default_reactions(msg):
+            try:
+                await msg.add_reaction("🍟")
+                await msg.add_reaction("🧂")
+            except:
+                pass
+
         # Liste von Trigger-Wörtern und den passenden, frechen Pommse-Antworten
-        # Du kannst hier jederzeit neue Wörter oder Sprüche hinzufügen!
         
         if any(word in content for word in ["pommes", "fritte", "fritten", "fritteuse"]):
+            await add_default_reactions(message)
             antworten = [
                 "Hat hier gerade jemand meinen heiligen Namen genannt?! 🍟 Kniet nieder vor der Knusprigkeit!",
                 "Wer wagt es, mich ohne eine Portion Mayo im Mund zu erwähnen? Unfassbar. 🙄🍟",
@@ -27,6 +35,7 @@ class AutoReply(commands.Cog):
             await message.reply(random.choice(antworten))
 
         elif any(word in content for word in ["knusper", "knusprig"]):
+            await add_default_reactions(message)
             antworten = [
                 "Knusprig ist mein zweiter Vorname. Der erste ist Perfektion. ✨🍟",
                 "Genau so muss das sein! Außen Gold, innen weich – wie eine echte Königin. 👑"
@@ -34,8 +43,9 @@ class AutoReply(commands.Cog):
             await message.reply(random.choice(antworten))
 
         elif any(word in content for word in ["rage", "tilt", "ausraster", "sauer"]):
+            await add_default_reactions(message)
             antworten = [
-                "Wer rastet hier?! Wenn hier jemand ausrastet, dann bin ich das, weil meine Frittösenschubse wieder trödelt! 🔥💢",
+                "Wer rastet hier?! Wenn hier jemand ausrastet, dann bin ich das, weil meine Frittöse wieder trödelt! 🔥💢",
                 "Rage-Modus aktiviert? Atmet durch, Kinder, die Queen regelt das. 🍟😤"
             ]
             await message.reply(random.choice(antworten))
