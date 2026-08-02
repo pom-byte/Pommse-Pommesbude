@@ -61,7 +61,7 @@ Thread(target=run).start()
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # Erlaubt das Ändern von Spitznamen & Rollen
+intents.members = True  # WICHTIG: Erlaubt das Erkennen von neuen Mitgliedern & Spitznamen
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -80,6 +80,22 @@ async def on_ready():
             name="wie du tiltest 🧂"
         )
     )
+
+
+@bot.event
+async def on_member_join(member):
+    """Begrüßt neue User standesgemäß in der pom.world Frittenschmiede"""
+    channel = discord.utils.get(member.guild.text_channels, name="willkommen") 
+    if not channel:
+        channel = member.guild.text_channels[0]
+        
+    begruessungen = [
+        f"🍟 Hossa {member.mention}! Willkommen in der Frittenschmiede von **pom.world**! Such dir ein warmes Plätzchen am Fettbecken aus.",
+        f"🔥 Frischfleisch! {member.mention} hat die Frittenschmiede in pom.world betreten. Mach dich nützlich oder schäl Kartoffeln!",
+        f"👑 Willkommen in pom.world, {member.mention}! Hier regieren die Knusprigkeit, die Mayo und ein Admin, der manchmal vergisst, wo der Ein-Schalter ist. Viel Spaß!",
+        f"✨ Vorsicht an der Fritteuse, {member.mention} ist da! Willkommen in der heiligen Frittenschmiede von pom.world!"
+    ]
+    await channel.send(random.choice(begruessungen))
 
 
 @bot.event
@@ -132,7 +148,6 @@ SPITZNAMEN_LISTE = [
     "Süß-Sauer-Boss 🍯",
 ]
 
-# Spitznamen-Command (Ändert den Server-Namen)
 @bot.command(name="spitzname", aliases=["nickname", "taufe"])
 @commands.has_permissions(manage_nicknames=True)
 async def spitzname(ctx, member: discord.Member = None):
@@ -147,7 +162,6 @@ async def spitzname(ctx, member: discord.Member = None):
     except Exception as e:
         await ctx.send(f"❌ Fehler: {e}")
         
-# Spitznamen einfach nur im Chat RUFEN
 @bot.command(name="rufname", aliases=["ruf", "spitznamen"])
 async def rufname(ctx, member: discord.Member = None):
     target = member.mention if member else ctx.author.mention
@@ -160,8 +174,6 @@ async def rufname(ctx, member: discord.Member = None):
     name = random.choice(SPITZNAMEN_LISTE)
     await ctx.send(f"🍟 {target} – {random.choice(vorsatz)} **{name}**!")
 
-
-# DIE STAMMGAST-VERGABE (Rollen-Command)
 @bot.command(name="stammgast")
 @commands.has_permissions(administrator=True)
 async def stammgast(ctx, member: discord.Member):
@@ -186,8 +198,47 @@ async def stammgast(ctx, member: discord.Member):
 
 
 # ==========================================
-# SPECIAL-COMMANDS
+# SPECIAL-COMMANDS & UPDATE 0.4
 # ==========================================
+
+@bot.command(name="update", aliases=["patchnotes", "pommseupdate"])
+@commands.has_permissions(administrator=True)
+async def update(ctx, version: str = "0.4"):
+    """Pommse verkündet die neuesten Updates und lästert über seine Menschen"""
+    target_channel = discord.utils.get(ctx.guild.text_channels, name="updates")
+    if not target_channel:
+        target_channel = ctx.channel
+
+    story_ueber_menschen = [
+        "Mein sogenannter 'Mensch' hat heute mal wieder versucht, Code zu schreiben. Es lief ungefähr so katastrophal wie eine Tiefkühl-Pommes in der Mikrowelle, aber irgendwie hat er es überlebt.",
+        "Mein Programmierer saß wieder stundenlang vor dem Bildschirm, hat dreimal den Rechner neu gestartet und behauptet, das wäre 'High-End-Entwicklung'. Na ja, Hauptsache die Fritteuse läuft.",
+        "Manchmal tut mein Mensch so, als hätte er alles voll im Griff – und im nächsten Moment vergisst er, wie man ein Terminal schließt. Aber hey, er tippt brav das ein, was ich ihm sage!",
+        "Ein großes Lob an meinen Erschaffer: Er hat heute tatsächlich einen ganzen Satz fehlerfrei getippt! Okay, der Bot macht die echte Arbeit, aber man muss die kleinen Erfolge feiern."
+    ]
+
+    embed = discord.Embed(
+        title=f"🚨 POMMSE UPDATE {version} IST DA! 🚀",
+        description=f"**Aus dem Maschinenraum der Frittenschmiede (pom.world):**\n\n*{random.choice(story_ueber_menschen)}*",
+        color=discord.Color.gold()
+    )
+    
+    embed.add_field(
+        name="🍟 Was ist neu in Update 0.4?",
+        value=(
+            "• **Echtzeit-Begrüßung:** Jedes neue Frittenglück wird in pom.world nun standesgemäß empfangen!\n"
+            "• **Update-Kanal freigeschaltet:** Ab sofort verkündete ich, der allwissende Bot, die Patchnotes selbst.\n"
+            "• **Mehr Spice & Flirt:** Die Fritteuse kocht heißer als je zuvor (schaut in den `!dippen`-Befehl! 🔥)\n"
+            "• **Stabilität:** Läuft jetzt dank digitalem Wecker 24/7 durch, damit niemand den Stecker zieht."
+        ),
+        inline=False
+    )
+    
+    embed.set_footer(text="Gezogen aus der krossen KI-Fritteuse von pom.world | Update 0.4")
+    
+    await target_channel.send(embed=embed)
+    if target_channel != ctx.channel:
+        await ctx.send(f"✅ Update {version} wurde erfolgreich im Kanal {target_channel.mention} veröffentlicht!")
+
 
 @bot.command(name="orakel", aliases=["frage", "8ball"])
 async def orakel(ctx, *, frage: str = None):
@@ -206,7 +257,6 @@ async def orakel(ctx, *, frage: str = None):
     ]
     await ctx.send(f"🔮 **Frage:** *{frage}*\n🍟 **Das Orakel sagt:** {random.choice(antworten)}")
 
-    
 @bot.command(name="fett")
 async def fett(ctx, *, thema: str = None):
     prozent = random.randint(12, 99)
@@ -220,7 +270,6 @@ async def fett(ctx, *, thema: str = None):
 
 @bot.command(name="roulette")
 async def roulette(ctx):
-    """Nutzung: !roulette"""
     ergebnisse = [
         ("🍟 **Perfekt!** Du hast eine goldbraune, knusprige Riffelpommse gezogen. +50 Knusper-Punkte!", 50),
         ("🥤 **Glück gehabt!** Nur eine lauwarme Pommes aber mit extra Mayo. +10 Knusper-Punkte!", 10),
@@ -230,7 +279,6 @@ async def roulette(ctx):
     ]
     
     text, punkte_wert = random.choice(ergebnisse)
-    
     add_punkte(ctx.author.id, punkte_wert)
     gesammtpunkte = get_punkte(ctx.author.id)
     
@@ -273,7 +321,7 @@ async def rangliste(ctx):
 @bot.command(name="horoskop", aliases=["schicksal"])
 async def horoskop(ctx):
     horoskope = [
-        "Heute gelingt dir jeder Headshot – du bist knackiger unterwegs als frische Fritten nach der Nachtschicht!",
+        "Heute gelingt dir jeder Headshot – du bist knackiger unterwegs as frische Fritten nach der Nachtschicht!",
         "Vorsicht heute: Dein Aim wird so schwammig sein wie eine Pommes, die 4 Stunden in der Papiertüte lag.",
         "Die Sterne stehen gut: Wenn du heute verlierst, schieb es einfach aufs fehlende Ketchup.",
         "Heute droht hoher Salzgehalt! Mach lieber nach jedem Match 5 Minuten Pause.",
@@ -305,14 +353,6 @@ async def necken(ctx, member: discord.Member = None):
         "Red weiter, du verbranntes Fritten-Endstück! 🔥",
         "Du fiese Fritte! 🍟",
         "Na, wieder mal im falschen Fett gebadet? 🧼🛢️",
-        "Du bist so durchgeschwitzt, du schmeckst schon nach Rapsöl!",
-        "Nicht mal die Möwen am Kiosk würden dich wegpicken! 🕊️",
-        "Uiuiui, da ist aber jemand ordentlich versalzen heute! 🧂😳",
-        "Oh oh... da denkt wohl jemand, er wäre eine edle Süßkartoffel! 🍠✨",
-        "Du bist doch maximal 'ne Riffelfritte auf Sparflamme! 📉",
-        "Riechst du das? Du riechst nach 3 Wochen altem Fritteusen-Fett! 🤢",
-        "Du hast auch mehr Mayonnaise als Hirn im Kopf, oder? 🥫🧠",
-        "Pssssst... leise sein, sonst landest du direkt als Beilage im Kindermenü! 🧸🍟"
     ]
     await ctx.send(f"🍟 {target} – {random.choice(neck_sprueche)}")
 
@@ -325,7 +365,6 @@ async def kater(ctx):
     kater_sprueche = [
         "Fritteuse auf Notstrom! Du brauchst jetzt drei Liter eiskaltes Leitungswasser und absolute Stille.",
         "Diagnose: Zu viel Gaming, zu wenig Schlaf. Leg dich hin, bevor dein Gehirn durchschmort wie eine alte Pommes.",
-        "Hier, nimm eine virtuelle Schmerztablette und einen kalten Kakao. Das wird heute nix mehr mit Aiming.",
     ]
     await ctx.send(f"🤕 {ctx.author.mention} – {random.choice(kater_sprueche)}")
 
@@ -333,16 +372,13 @@ async def kater(ctx):
 async def entscheide(ctx, *, choices: str):
     options = choices.split(" oder ")
     if len(options) < 2:
-        await ctx.send(
-            "🍟 Hey! Du musst mir schon zwei Dinge mit 'oder' getrennt nennen (z. B. `!entscheide Zocken oder Schlafen`)."
-        )
+        await ctx.send("🍟 Hey! Du musst mir schon zwei Dinge mit 'oder' getrennt nennen (z. B. `!entscheide Zocken oder Schlafen`).")
         return
     selected = random.choice(options).strip()
     begruendungen = [
         f"Nimm **{selected}**! Das ist knackig wie 'ne frische Pommes.",
         f"Ganz klar **{selected}**! Alles andere ist aktuell eher wie 'ne halbe Stunde im Fett vergessen.",
         f"Das Fritten-Orakel hat gesprochen: **{selected}**! Vertrau der Fritteuse.",
-        f"Ich habe die Kartoffeln befragt... sie sagen eindeutig: **{selected}**!",
     ]
     await ctx.send(f"🍟 {random.choice(begruendungen)}")
 
@@ -373,8 +409,6 @@ async def sauce(ctx, member: discord.Member = None):
         "**Joppiesauce** – Süß, würzig und extrem speziell! 🇳🇱",
         "**Knoblauch-Sauce** – Sehr stabil, aber halte heute lieber Abstand zu Leuten! 🧄",
         "**Scharfe Chili-Sauce** – Vorsicht, heute bist du richtig feurig unterwegs! 🔥",
-        "**Trüffel-Mayo** – Hui, da hält sich wohl jemand für was Besseres! 💅✨",
-        "**Süß-Sauer** – Heute bist du eine emotionale Achterbahnfahrt! 🎢"
     ]
     await ctx.send(f"🧪 {target}, deine Sauce des Tages ist: {random.choice(soessen)}")
     
@@ -415,10 +449,7 @@ async def muenze(ctx):
 @bot.command(name="slots", aliases=["casino", "zocken"])
 async def slots(ctx):
     emojis = ["🍟", "🥔", "🧀", "🌭", "🧂", "🍠"]
-    slot1 = random.choice(emojis)
-    slot2 = random.choice(emojis)
-    slot3 = random.choice(emojis)
-    
+    slot1, slot2, slot3 = random.choice(emojis), random.choice(emojis), random.choice(emojis)
     zeile = f"🎰 | {slot1} | {slot2} | {slot3} |\n\n"
     
     if slot1 == slot2 == slot3:
@@ -436,13 +467,11 @@ async def fritteuse(ctx, member: discord.Member, minuten: int = 5, *, grund: str
         return
 
     dauer = discord.utils.utcnow() + datetime.timedelta(minutes=minuten)
-
     try:
         await member.timeout(dauer, reason=grund)
         await ctx.send(
             f"🔥 **AB IN DIE FRITTEUSE!** {member.mention} wurde für **{minuten} Minute(n)** auf 180°C runtergekühlt!\n"
-            f"💬 *Grund:* {grund}\n"
-            f"🤫 *Das war's erst mal, ab in die Fritten mit dir!*"
+            f"💬 *Grund:* {grund}"
         )
     except discord.Forbidden:
         await ctx.send("❌ Mir fehlen die Rechte! Meine Bot-Rolle muss höher liegen als die des Ziel-Users.")
@@ -454,9 +483,7 @@ async def fritteuse(ctx, member: discord.Member, minuten: int = 5, *, grund: str
 async def entfrittieren(ctx, member: discord.Member):
     try:
         await member.timeout(None)
-        await ctx.send(
-            f"🍟 **Frisch abgetropft!** {member.mention} wurde vorzeitig aus der Fritteuse geholt und darf wieder mitreden."
-        )
+        await ctx.send(f"🍟 **Frisch abgetropft!** {member.mention} wurde vorzeitig aus der Fritteuse geholt und darf wieder mitreden.")
     except discord.Forbidden:
         await ctx.send("❌ Mir fehlen die Rechte dafür!")
     except Exception as e:
@@ -471,11 +498,9 @@ async def entfrittieren(ctx, member: discord.Member):
 async def daily(ctx):
     conn = sqlite3.connect("knusper.db")
     cursor = conn.cursor()
-    
     cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id INTEGER PRIMARY KEY, last_daily TEXT)")
     cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = ?", (ctx.author.id,))
     result = cursor.fetchone()
-    
     heute = datetime.date.today().isoformat()
     
     if result and result[0] == heute:
@@ -484,7 +509,6 @@ async def daily(ctx):
         return
         
     add_punkte(ctx.author.id, 50)
-    
     cursor.execute("INSERT OR REPLACE INTO user_daily (user_id, last_daily) VALUES (?, ?)", (ctx.author.id, heute))
     conn.commit()
     conn.close()
@@ -498,7 +522,6 @@ async def give(ctx, member: discord.Member, anzahl: int):
     if member == ctx.author:
         await ctx.send("🍟 Du kannst dir doch nicht selbst Punkte schenken, du Schlawiner!")
         return
-        
     if anzahl <= 0:
         await ctx.send("🍟 Du musst schon eine positive Anzahl an Punkten verschenken wollen!")
         return
@@ -510,7 +533,6 @@ async def give(ctx, member: discord.Member, anzahl: int):
         
     add_punkte(ctx.author.id, -anzahl)
     add_punkte(member.id, anzahl)
-    
     await ctx.send(f"💸 {ctx.author.mention} hat **{anzahl} Knusper-Punkte** an {member.mention} rüberschoben! Stabil! 🤝🍟")
 
 
@@ -524,45 +546,32 @@ async def cheat(ctx, anzahl: int, member: discord.Member = None):
 
 @bot.command(name="kompliment", aliases=["frittenlob", "heiss", "ehre"])
 async def kompliment(ctx, member: discord.Member = None):
-    """Verteilt charmante Fritten-Komplimente und knackige kurze Sprüche!"""
     target = member.mention if member else ctx.author.mention
-    
     komplimente_liste = [
         f"🔥 {target}, du Hottie!",
         f"👑 {target}, absolute Sahnestück-Fritte!",
         f"✨ {target}, du bist knackiger als eine frische Riffelpommse direkt aus dem 180-Grad-Öl!",
         f"🍟 {target}, du Hottie, selbst die edelste Mayo würde vor Neid erblassen, wenn sie dich sieht!",
-        f"🛢️ {target}, du bringst die Fritteuse schneller zum Kochen als jeder High-End-Gaming-PC!",
-        f"🏆 {target}, mit dir brennt absolut gar nichts an – du bist der absolute Hauptgewinn am Kiosk!",
-        f"🌟 {target}, absolute Traum-Fritte!"
     ]
-    
     await ctx.send(random.choice(komplimente_liste))
     
-
 @bot.command(name="dippen", aliases=["hotti", "flirt"])
 async def dippen(ctx, member: discord.Member = None):
-    """Der ultimative, extrem spicy Flirt-Befehl!"""
     target = member.mention if member else ctx.author.mention
-    
     flirt_sprueche = [
         f"🌶️ {target}, wenn du eine Pommes wärst, würde ich dich nicht nur in Mayo dippen, sondern in der schärfsten Habanero-Soße baden lassen, bis die Fritteuse kocht!",
         f"🥵 {target}, du brennst so heiß, da schmilzt nicht nur das Rapsöl – du legst hier gerade den ganzen Imbiss lahm!",
         f"🔥 {target}, bei deinem Anblick fängt selbst die kälteste Tiefkühlkost an zu knistern. Wollen wir die Temperatur erhöhen?",
-        f"🛢️ {target}, verdammt, du siehst so verboten knusprig aus, dass ich dich am liebsten direkt naschen würde, bevor das Fett überhaupt heiß ist!",
-        f"💋 {target}, du bist so hotti hot hot, da brennt jede Sicherung durch. Lass uns den Schalter auf Anschlag drehen!",
-        f"🔥🌶️ {target}, du bist die schärfste Gewürzmischung diesseits der Frittierstraße – lass uns zusammenbrennen!"
     ]
-    
     await ctx.send(random.choice(flirt_sprueche))
     
+
 # ==========================================
 # KNUSPER-MENÜ & BESTELL-SYSTEM
 # ==========================================
 
 @bot.command(name="menue", aliases=["shop", "karte"])
 async def menue(ctx):
-    """Zeigt die Knusper-Speisekarte an"""
     embed = discord.Embed(
         title="🍟 Pommse' Fritten-Speisekarte",
         description="Tausche deine hart verdienten Knusper-Punkte gegen exklusive Menüs ein!",
@@ -576,7 +585,6 @@ async def menue(ctx):
 
 @bot.command(name="bestellen", aliases=["order", "kaufen"])
 async def bestellen(ctx, item: str):
-    """Bestelle Menüs von der Karte: !bestellen stammgast"""
     item = item.lower()
     guthaben = get_punkte(ctx.author.id)
     
@@ -594,7 +602,7 @@ async def bestellen(ctx, item: str):
             
         add_punkte(ctx.author.id, -preis)
         await ctx.author.add_roles(role)
-        await ctx.send(f"🎉 Frische Bestellung serviert, {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte geschnappt und gehörst zum harten Fritösen-Kern! 👑🍟")
+        await ctx.send(f"🎉 Frische Bestellung serviert, {ctx.author.mention}! Du hast dir die **Stammgast**-Rolle für {preis} Punkte geschnappt! 👑🍟")
         
     elif item == "titel":
         preis = 200
