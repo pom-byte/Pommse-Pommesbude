@@ -11,7 +11,7 @@ class Pets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.init_db()
-        self.hunger_loop.start() # Startet den automatischen Hunger-Timer im Hintergrund
+        self.hunger_loop.start()
 
     def cog_unload(self):
         self.hunger_loop.cancel()
@@ -42,13 +42,11 @@ class Pets(commands.Cog):
         except Exception as e:
             print(f"Fehler bei DB-Init in Pets: {e}")
 
-    # Automatischer Task: Zieht allen Pets alle 4 Stunden 15 Hunger-Punkte ab
     @tasks.loop(hours=4)
     async def hunger_loop(self):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Zieht 15 Hunger ab, aber minimal bis 0
             cur.execute("UPDATE user_pets SET hunger = GREATEST(0, hunger - 15);")
             conn.commit()
             cur.close()
@@ -210,9 +208,7 @@ class Pets(commands.Cog):
         row_eko = cur.fetchone()
         
         if not row_eko:
-            cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
-            conn.commit()
-            userpunkte = 100
+            userpunkte = 0
         else:
             userpunkte = row_eko[0]
 
