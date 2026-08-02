@@ -18,7 +18,6 @@ class Economy(commands.Cog):
         try:
             conn = self.get_db_connection()
             cursor = conn.cursor()
-            # Wir erweitern die Tabelle um 'highscore' (falls sie alt ist, fügen wir es sicherheitshalber hinzu)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_punkte (
                     user_id BIGINT PRIMARY KEY,
@@ -26,7 +25,6 @@ class Economy(commands.Cog):
                     highscore INTEGER DEFAULT 0
                 )
             """)
-            # Falls die Tabelle schon existierte ohne 'highscore', fangen wir das ab:
             cursor.execute("""
                 ALTER TABLE user_punkte ADD COLUMN IF NOT EXISTS highscore INTEGER DEFAULT 0;
             """)
@@ -77,7 +75,6 @@ class Economy(commands.Cog):
         """Wird automatisch im Hintergrund ausgeführt, wenn ein Befehl erfolgreich war (+1 Highscore)."""
         if ctx.author.bot:
             return
-        # Jeder erfolgreiche Befehl gibt im Hintergrund +1 Highscore!
         self.add_punkte_und_highscore(ctx.author.id, punkte_delta=0, highscore_delta=1)
 
     # --- BEFEHLE ---
@@ -95,7 +92,6 @@ class Economy(commands.Cog):
             await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
             return
             
-        # Daily gibt +50 Kontostand UND zusätzlich +5 Highscore als Belohnung!
         self.add_punkte_und_highscore(ctx.author.id, punkte_delta=50, highscore_delta=5)
         cursor.execute("INSERT INTO user_daily (user_id, last_daily) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET last_daily = %s", (ctx.author.id, heute, heute))
         conn.commit()
@@ -124,7 +120,6 @@ class Economy(commands.Cog):
         try:
             conn = self.get_db_connection()
             cursor = conn.cursor()
-            # Rangliste zeigt jetzt standardmäßig nach Lebenszeit-Highscore!
             cursor.execute("SELECT user_id, punkte, highscore FROM user_punkte ORDER BY highscore DESC LIMIT 10")
             ergebnisse = cursor.fetchall()
             cursor.close()
@@ -168,9 +163,7 @@ class Economy(commands.Cog):
             await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_konto} 🍟)")
             return
             
-        # Punkte abziehen beim Sender (Highscore ändert sich nicht beim Schenken)
         self.add_punkte_und_highscore(ctx.author.id, punkte_delta=-anzahl, highscore_delta=0)
-        # Punkte dazugeben beim Empfänger
         self.add_punkte_und_highscore(member.id, punkte_delta=anzahl, highscore_delta=0)
         
         await ctx.send(f"💸 {ctx.author.mention} hat **{anzahl} Knusper-Punkte** an {member.mention} rüberschoben! Stabil! 🤝🍟")
@@ -179,7 +172,6 @@ class Economy(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def cheat(self, ctx, anzahl: int, member: discord.Member = None):
         target = member if member else ctx.author
-        # Admin-Cheat gibt sowohl Konto als auch Highscore einen Boost
         self.add_punkte_und_highscore(target.id, punkte_delta=anzahl, highscore_delta=anzahl)
         kontostand, highscore = self.get_user_daten(target.id)
         await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat **{anzahl} Punkte** erhalten!\n*(Konto: {kontostand} 🍟 | Highscore: {highscore} ⭐)* 🛢️✨")

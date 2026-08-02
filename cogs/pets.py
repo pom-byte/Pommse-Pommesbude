@@ -5,7 +5,7 @@ import random
 import psycopg2
 
 def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
 
 class Pets(commands.Cog):
     def __init__(self, bot):
@@ -15,10 +15,10 @@ class Pets(commands.Cog):
     def init_db(self):
         conn = get_db_connection()
         cur = conn.cursor()
-        # Tabelle für das Knusper-Pet
+        # Tabelle für das Knusper-Pet (user_id als BIGINT für Konsistenz)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_pets (
-                user_id TEXT PRIMARY KEY,
+                user_id BIGINT PRIMARY KEY,
                 pet_name TEXT,
                 hunger INT DEFAULT 100,
                 level INT DEFAULT 1,
@@ -28,7 +28,7 @@ class Pets(commands.Cog):
         # Tabelle für den Shop / Menü (Käufe)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_inventory (
-                user_id TEXT,
+                user_id BIGINT,
                 item_name TEXT,
                 PRIMARY KEY (user_id, item_name)
             );
@@ -89,13 +89,13 @@ class Pets(commands.Cog):
             return
 
         preis = self.SHOP_ANGEBOT[item_name]["preis"]
-        user_id = str(ctx.author.id)
+        user_id = ctx.author.id
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Punkte prüfen
-        cur.execute("SELECT knusper_punkte FROM user_economy WHERE user_id = %s;", (user_id,))
+        # Punkte prüfen (nutzt jetzt user_punkte)
+        cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
         row = cur.fetchone()
         userpunkte = row[0] if row else 0
 
@@ -113,8 +113,11 @@ class Pets(commands.Cog):
             await ctx.send(f"⚠️ Du hast **{item_name.capitalize()}** bereits gekauft!")
             return
 
+        # Sicherstellen, dass user_pets existiert, falls noch kein Pet da ist
+        cur.execute("INSERT INTO user_pets (user_id, pet_name) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING;", (user_id, random.choice(self.ZUFALLS_NAMEN)))
+
         # Kauf abwickeln: Punkte abziehen & Item ins Inventar
-        cur.execute("UPDATE user_economy SET knusper_punkte = knusper_punkte - %s WHERE user_id = %s;", (preis, user_id))
+        cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
         cur.execute("INSERT INTO user_inventory (user_id, item_name) VALUES (%s, %s);", (user_id, item_name))
         
         # Pet-Accessoire aktualisieren falls es ein Accessoire ist
@@ -131,7 +134,7 @@ class Pets(commands.Cog):
     @commands.command(name="pet", aliases=["knusperpet"])
     async def pet(self, ctx):
         """Zeigt dein persönliches Knusper-Pet."""
-        user_id = str(ctx.author.id)
+        user_id = ctx.author.id
         conn = get_db_connection()
         cur = conn.cursor()
         
@@ -139,7 +142,6 @@ class Pets(commands.Cog):
         row = cur.fetchone()
         
         if not row:
-            # Wähle einen zufälligen Namen aus der Liste für das neue Pet!
             zufalls_name = random.choice(self.ZUFALLS_NAMEN)
             cur.execute("INSERT INTO user_pets (user_id, pet_name) VALUES (%s, %s);", (user_id, zufalls_name))
             conn.commit()
@@ -164,13 +166,13 @@ class Pets(commands.Cog):
     @commands.command(name="fuettern", aliases=["feed"])
     async def fuettern(self, ctx):
         """Füttere dein Knusper-Pet mit 50 Knusper-Punkten, damit es satt und knusprig bleibt!"""
-        user_id = str(ctx.author.id)
+        user_id = ctx.author.id
         futter_kosten = 50
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT knusper_punkte FROM user_economy WHERE user_id = %s;", (user_id,))
+        cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
         row_eko = cur.fetchone()
         userpunkte = row_eko[0] if row_eko else 0
 
@@ -191,12 +193,12 @@ class Pets(commands.Cog):
 
         nuevo_hunger = min(100, hunger + 25)
 
-        cur.execute("UPDATE user_economy SET knusper_punkte = knusper_punkte - %s WHERE user_id = %s;", (futter_kosten, user_id))
+        cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (futter_kosten, user_id))
         cur.execute("""
-            INSERT INTO user_pets (user_id, hunger) VALUES (%s, %s)
+            INSERT INTO user_pets (user_id, hunger, pet_name) VALUES (%s, %s, %s)
             ON CONFLICT (user_id) 
             DO UPDATE SET hunger = %s;
-        """, (user_id, nuevo_hunger, nuevo_hunger))
+        """, (user_id, nuevo_hunger, random.choice(self.ZUFALLS_NAMEN), nuevo_hunger))
 
         conn.commit()
         cur.close()
@@ -207,9 +209,8 @@ class Pets(commands.Cog):
     @commands.command(name="petumbenennen", aliases=["umbenennen"])
     async def petumbenennen(self, ctx, *, neuer_name: str):
         """Benenne dein Knusper-Pet nach deinen Wünschen um! (z.B. !petumbenennen Knobi-Dip)"""
-        user_id = str(ctx.author.id)
+        user_id = ctx.author.id
         
-        # Begrenze die Länge des Namens zur Sicherheit (z.B. max 30 Zeichen)
         if len(neuer_name) > 30:
             await ctx.send("❌ Der Name ist zu lang! Max. 30 Zeichen sind erlaubt.")
             return
@@ -242,13 +243,12 @@ class Pets(commands.Cog):
             await ctx.send("❌ Bots wollen keine Fritten adoptieren, die verbrennen nur im Prozessor!")
             return
 
-        sender_id = str(ctx.author.id)
-        empfaenger_id = str(member.id)
+        sender_id = ctx.author.id
+        empfaenger_id = member.id
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Prüfen ob der Absender ein Pet hat
         cur.execute("SELECT pet_name, hunger, level, accessoires FROM user_pets WHERE user_id = %s;", (sender_id,))
         sender_pet = cur.fetchone()
 
@@ -258,7 +258,6 @@ class Pets(commands.Cog):
             await ctx.send("❌ Du hast gar kein Knusper-Pet, das du verschenken könntest! Tippe erst `!pet`.")
             return
 
-        # Prüfen ob der Empfänger schon ein Pet hat
         cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (empfaenger_id,))
         empfaenger_pet = cur.fetchone()
 
@@ -270,10 +269,7 @@ class Pets(commands.Cog):
 
         pet_name, hunger, level, accessoires = sender_pet
         
-        # Altes Pet beim Absender löschen
         cur.execute("DELETE FROM user_pets WHERE user_id = %s;", (sender_id,))
-        
-        # Neues Pet beim Empfänger eintragen
         cur.execute("""
             INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
             VALUES (%s, %s, %s, %s, %s);
