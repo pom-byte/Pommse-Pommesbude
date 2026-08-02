@@ -11,7 +11,7 @@ class AnleitungCog(commands.Cog):
         # -------------------------------------------------------------
         # TRAGE HIER DEINE ECHTE ANLEITUNGS-KANAL-ID EIN
         # -------------------------------------------------------------
-        ANLEITUNG_CHANNEL_ID = 1533187459486322698  # <--- HIER DEINE ID REIN!
+        ANLEITUNG_CHANNEL_ID = 15331874594863226988  # <--- HIER DEINE ID REIN!
         
         target_channel = self.bot.get_channel(ANLEITUNG_CHANNEL_ID)
         if not target_channel:
@@ -36,6 +36,7 @@ class AnleitungCog(commands.Cog):
                 "🐾 **Pets, Menü & Shop**\n"
                 "• `!menue` (oder `!shop`, `!speisekarte`) – Speisekarte für Accessoires und Items.\n"
                 "• `!kaufen <item>` – Kaufe stylische Items (Sonnenbrille, Hütchen etc.) für dein Pet.\n\n"
+                
                 "🎉 **Spaß & Fun-Befehle**\n"
                 "• `!spitzname` / `!rufname` – Verleiht oder zeigt Fritten-Spitznamen.\n"
                 "• `!orakel <Frage>` – Befragt das allwissende Fett-Orakel.\n"
@@ -44,12 +45,7 @@ class AnleitungCog(commands.Cog):
                 "• `!necken <@User>` / `!salz <@User>` – Locksprüche und Salz-Warnungen.\n"
                 "• `!ping` / `!kater` / `!entscheide <A> oder <B>` – Hilfreiches & Schnelles.\n"
                 "• `!feier` / `!sauce` / `!quiz` / `!matsch` – Mehr Spaß für die Community.\n"
-                "• `!muenze` / `!kompliment` / `!dippen` – Münzwurf, Liebe und heiße Flirts.\n\n"
-                
-                "🚀 **Admin-Tools**\n"
-                "• `!update [Version] [Text]` – Postet offizielle Patchnotes in den Update-Kanal.\n"
-                "• `!anleitung` – Aktualisiert diese Anleitung hier im Kanal.\n"
-                "• `!cheat <Anzahl> [@User]` – Gibt Admins einen Punkte-Boost."
+                "• `!muenze` / `!kompliment` / `!dippen` – Münzwurf, Liebe und heiße Flirts."
             ),
             color=discord.Color.orange()
         )
