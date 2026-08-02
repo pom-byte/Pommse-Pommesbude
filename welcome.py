@@ -6,7 +6,7 @@ class Welcome(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    on_member_join(self, member: discord.Member):
+    async def on_member_join(self, member: discord.Member):
         # -------------------------------------------------------------
         # TRAGE HIER DIE ID DEINES WILLKOMMENS-KANALS EIN
         # -------------------------------------------------------------
