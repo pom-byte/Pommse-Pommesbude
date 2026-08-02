@@ -16,7 +16,6 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # WICHTIG: Kein DROP TABLE mehr, damit eure Daten und Pets erhalten bleiben!
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_pets (
                     user_id BIGINT PRIMARY KEY,
@@ -86,6 +85,7 @@ class Pets(commands.Cog):
 
         preis = self.SHOP_ANGEBOT[item_name]["preis"]
         user_id = ctx.author.id
+        item_typ = self.SHOP_ANGEBOT[item_name]["typ"]
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -104,28 +104,45 @@ class Pets(commands.Cog):
         if cur.fetchone():
             cur.close()
             conn.close()
-            await ctx.send(f"⚠️ Du hast **{item_name.capitalize()}** bereits gekauft!")
+            await ctx.send(f"⚠️ Du hast **{item_name.replace('_', ' ').capitalize()}** bereits gekauft!")
             return
 
-        cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (user_id,))
-        if not cur.fetchone():
+        cur.execute("SELECT user_id, accessoires FROM user_pets WHERE user_id = %s;", (user_id,))
+        pet_row = cur.fetchone()
+        
+        if not pet_row:
             zufalls_name = random.choice(self.ZUFALLS_NAMEN)
             cur.execute("""
                 INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
                 VALUES (%s, %s, 100, 1, 'Keine');
             """, (user_id, zufalls_name))
+            aktuelle_acc = "Keine"
+        else:
+            aktuelle_acc = pet_row[1]
 
+        # Punkte abziehen und Inventar ergänzen
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
         cur.execute("INSERT INTO user_inventory (user_id, item_name) VALUES (%s, %s);", (user_id, item_name))
         
-        if self.SHOP_ANGEBOT[item_name]["typ"] in ["Accessoire", "Upgrade"]:
-            cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (item_name.capitalize(), user_id))
+        # Accessoires kombinieren statt überschreiben
+        if item_typ in ["Accessoire", "Upgrade"]:
+            lesbarer_name = item_name.replace("_", " ").capitalize()
+            if aktuelle_acc == "Keine" or not aktuelle_acc:
+                neue_acc = lesbarer_name
+            else:
+                # Prüfen, ob es schon in der Liste steht, sonst anhängen
+                liste = [a.strip() for a in aktuelle_acc.split(",")]
+                if lesbarer_name not in liste:
+                    liste.append(lesbarer_name)
+                neue_acc = ", ".join(liste)
+
+            cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (neue_acc, user_id))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        await ctx.send(f"🎉 **Bestellung erfolgreich!** {ctx.author.mention} hat sich **{item_name.capitalize()}** für {preis} 🍟 gegönnt! Dein Pet freut sich riesig.")
+        await ctx.send(f"🎉 **Bestellung erfolgreich!** {ctx.author.mention} hat sich **{item_name.replace('_', ' ').capitalize()}** für {preis} 🍟 gegönnt! Dein Pet trägt es jetzt stolz mit dazu.")
 
     @commands.command(name="pet", aliases=["knusperpet"])
     async def pet(self, ctx):
@@ -154,7 +171,7 @@ class Pets(commands.Cog):
         )
         embed.add_field(name="Hunger-Status", value=f"{'🍟' * (hunger // 20)} ({hunger}/100)", inline=False)
         embed.add_field(name="Level", value=f"⭐ {level}", inline=True)
-        embed.add_field(name="Ausstattung", value=f"🕶️ {accessoires}", inline=True)
+        embed.add_field(name="Ausstattung", value=f"✨ {accessoires}", inline=True)
         embed.set_footer(text="Füttere mit !fuettern oder benenne es mit !petumbenennen um!")
         await ctx.send(embed=embed)
 
@@ -223,52 +240,6 @@ class Pets(commands.Cog):
         conn.close()
 
         await ctx.send(f"✨ **Namensänderung erfolgreich!** Dein Knusper-Pet heißt ab jetzt offiziell **{neuer_name}**! 🍟🐾")
-
-    @commands.command(name="petschenken", aliases=["petvergeben", "pettausch"])
-    async def petschenken(self, ctx, member: discord.Member):
-        if member == ctx.author:
-            await ctx.send("❌ Du kannst dein Pet nicht dir selbst schenken, du hast es doch schon!")
-            return
-        if member.bot:
-            await ctx.send("❌ Bots wollen keine Fritten adoptieren, die verbrennen nur im Prozessor!")
-            return
-
-        sender_id = ctx.author.id
-        empfaenger_id = member.id
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("SELECT pet_name, hunger, level, accessoires FROM user_pets WHERE user_id = %s;", (sender_id,))
-        sender_pet = cur.fetchone()
-
-        if not sender_pet:
-            cur.close()
-            conn.close()
-            await ctx.send("❌ Du gar kein Knusper-Pet, das du verschenken könntest! Tippe erst `!pet`.")
-            return
-
-        cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (empfaenger_id,))
-        if cur.fetchone():
-            cur.close()
-            conn.close()
-            await ctx.send(f"⚠️ {member.mention} hat bereits ein eigenes Knusper-Pet! Jeder Spieler darf nur eins besitzen.")
-            return
-
-        pet_name, hunger, level, accessoires = sender_pet
-        
-        cur.execute("DELETE FROM user_pets WHERE user_id = %s;", (sender_id,))
-        cur.execute("""
-            INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (user_id) DO UPDATE SET pet_name = EXCLUDED.pet_name;
-        """, (empfaenger_id, pet_name, hunger, level, accessoires))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        await ctx.send(f"🎁 **Adoption geglückt!** {ctx.author.mention} hat sein treues Pet **{pet_name}** an {member.mention} verschenkt! 🍟🐾")
 
 async def setup(bot):
     await bot.add_cog(Pets(bot))
