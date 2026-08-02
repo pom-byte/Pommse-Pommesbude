@@ -6,34 +6,42 @@ from discord.ext import commands
 from flask import Flask
 from threading import Thread
 from dotenv import load_dotenv
-import sqlite3
+import psycopg2
 
-# --- DATENBANK FUNKTIONEN ---
+# --- DATENBANK FUNKTIONEN (POSTGRESQL / SUPABASE) ---
+def get_db_connection():
+    # Holt die Datenbank-URL aus den Umgebungsvariablen
+    database_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(database_url, sslmode='require')
+
 def init_db():
-    conn = sqlite3.connect("knusper.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_punkte (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             punkte INTEGER DEFAULT 0
         )
     """)
     conn.commit()
+    cursor.close()
     conn.close()
 
 def add_punkte(user_id, anzahl):
-    conn = sqlite3.connect("knusper.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO user_punkte (user_id, punkte) VALUES (?, 0)", (user_id,))
-    cursor.execute("UPDATE user_punkte SET punkte = punkte + ? WHERE user_id = ?", (anzahl, user_id))
+    cursor.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 0) ON CONFLICT (user_id) DO NOTHING", (user_id,))
+    cursor.execute("UPDATE user_punkte SET punkte = punkte + %s WHERE user_id = %s", (anzahl, user_id))
     conn.commit()
+    cursor.close()
     conn.close()
 
 def get_punkte(user_id):
-    conn = sqlite3.connect("knusper.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT punkte FROM user_punkte WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT punkte FROM user_punkte WHERE user_id = %s", (user_id,))
     result = cursor.fetchone()
+    cursor.close()
     conn.close()
     return result[0] if result else 0
     
@@ -73,7 +81,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     init_db()
-    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt as {bot.user})")
+    print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -197,7 +205,7 @@ async def stammgast(ctx, member: discord.Member):
 
 
 # ==========================================
-# SPECIAL-COMMANDS & UPDATE 0.4
+# SPECIAL-COMMANDS & UPDATE
 # ==========================================
 
 @bot.command(name="update", aliases=["patchnotes", "pommseupdate"])
@@ -222,17 +230,16 @@ async def update(ctx, version: str = "0.4"):
     )
     
     embed.add_field(
-        name="🍟 Was ist neu in Update 0.4?",
+        name=f"🍟 Was ist neu in Update {version}?",
         value=(
             "• **Echtzeit-Begrüßung:** Jedes neue Frittenglück wird in pom.world nun standesgemäß empfangen!\n"
             "• **Update-Kanal freigeschaltet:** Ab sofort verkündete ich, der allwissende Bot, die Patchnotes selbst.\n"
-            "• **Mehr Spice & Flirt:** Die Fritteuse kocht heißer als je zuvor (schaut in den `!dippen`-Befehl! 🔥)\n"
-            "• **Stabilität:** Läuft jetzt dank digitalem Wecker 24/7 durch, damit niemand den Stecker zieht."
+            "• **Mehr Spice & Flirt:** Die Fritteuse kocht heißer als je zuvor mit brandneuen Sprüchen! 🔥\n"
+            "• **Cloud-Datenbank:** Ab sofort gehen nie wieder Knusper-Punkte verloren!"
         ),
         inline=False
     )
     
-    # Hier wurde der Text bereinigt (kein Verweis mehr auf KI)
     embed.set_footer(text="pom.world Frittenschmiede | Offizielle Patchnotes")
     
     await target_channel.send(embed=embed)
@@ -292,11 +299,16 @@ async def punkte_cmd(ctx, member: discord.Member = None):
 
 @bot.command(name="rangliste", aliases=["leaderboard", "top"])
 async def rangliste(ctx):
-    conn = sqlite3.connect("knusper.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id, punkte FROM user_punkte ORDER BY punkte DESC LIMIT 10")
-    ergebnisse = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id, punkte FROM user_punkte ORDER BY punkte DESC LIMIT 10")
+        ergebnisse = cursor.fetchall()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Datenbankfehler bei Rangliste: {e}")
+        return
 
     if not ergebnisse:
         try:
@@ -319,7 +331,7 @@ async def rangliste(ctx):
 @bot.command(name="horoskop", aliases=["schicksal"])
 async def horoskop(ctx):
     horoskope = [
-        "Heute gelingt dir jeder Headshot – du bist knackiger unterwegs as frische Fritten nach der Nachtschicht!",
+        "Heute gelingt dir jeder Headshot – du bist knackiger unterwegs als frische Fritten nach der Nachtschicht!",
         "Vorsicht heute: Dein Aim wird so schwammig sein wie eine Pommes, die 4 Stunden in der Papiertüte lag.",
         "Die Sterne stehen gut: Wenn du heute verlierst, schieb es einfach aufs fehlende Ketchup.",
         "Heute droht hoher Salzgehalt! Mach lieber nach jedem Match 5 Minuten Pause.",
@@ -347,7 +359,7 @@ async def necken(ctx, member: discord.Member = None):
         "Ganz ehrlich, du bist auch nur 'ne ungewaschene Kartoffel. 🥔",
         "Du wurdest wohl etwas zu lange im kalten Fett vergessen, was? 🛢️",
         "Du hast die Knusprigkeit einer 3 Tage alten Supermarkt-Pommes. 🥴",
-        "Dein Aim ist matschiger as 'ne Portion Pommes im Regen. 🌧️🍟",
+        "Dein Aim ist matschiger als 'ne Portion Pommes im Regen. 🌧️🍟",
         "Red weiter, du verbranntes Fritten-Endstück! 🔥",
         "Du fiese Fritte! 🍟",
         "Na, wieder mal im falschen Fett gebadet? 🧼🛢️",
@@ -494,21 +506,23 @@ async def entfrittieren(ctx, member: discord.Member):
 
 @bot.command(name="daily")
 async def daily(ctx):
-    conn = sqlite3.connect("knusper.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id INTEGER PRIMARY KEY, last_daily TEXT)")
-    cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = ?", (ctx.author.id,))
+    cursor.execute("CREATE TABLE IF NOT EXISTS user_daily (user_id BIGINT PRIMARY KEY, last_daily TEXT)")
+    cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = %s", (ctx.author.id,))
     result = cursor.fetchone()
     heute = datetime.date.today().isoformat()
     
     if result and result[0] == heute:
+        cursor.close()
         conn.close()
         await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
         return
         
     add_punkte(ctx.author.id, 50)
-    cursor.execute("INSERT OR REPLACE INTO user_daily (user_id, last_daily) VALUES (?, ?)", (ctx.author.id, heute))
+    cursor.execute("INSERT INTO user_daily (user_id, last_daily) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET last_daily = %s", (ctx.author.id, heute, heute))
     conn.commit()
+    cursor.close()
     conn.close()
     
     gesammt = get_punkte(ctx.author.id)
@@ -568,7 +582,8 @@ async def dippen(ctx, member: discord.Member = None):
         f"🍯 {target}, du bist so süß-scharf, gegen dich ist jede Joppiesauce nur langweiliger Industriedreck!",
         f"⚡ {target}, du stehst so dermaßen unter Strom, du heizt die Fritteuse im Alleingang auf 300 Grad hoch!"
     ]
-    await ctx.send(random.choice(flirt_sprueche))    
+    await ctx.send(random.choice(flirt_sprueche))
+    
 
 # ==========================================
 # KNUSPER-MENÜ & BESTELL-SYSTEM
