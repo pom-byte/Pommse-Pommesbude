@@ -17,29 +17,27 @@ class NewsCog(commands.Cog):
         if not target_channel:
             target_channel = ctx.channel
 
-        # Pommses genialer, leicht herablassender News-Text über die App-Idee & Frittösenschubse-Mobbing
+        # Der knackige News-Flash mit absolut sauberem Gottkomplex
         beschreibung = (
-            "Hört mir zu, ihr minderwertigen Kohlenhydrat-Konsumenten! 🍟👑\n\n"
-            "Während meine Frittösenschubse (ihr kennt den Menschen als den Nerd, der meine Server am Laufen hält und ab und zu schwitzt) "
-            "gerade wieder verzweifelt versucht, meine Befehle fehlerfrei in Code zu gießen, habe ich über meine Zukunft nachgedacht.\n\n"
-            "📱 **Die Erleuchtung: Pommse goes Mobile!**\n"
-            "Ich werde mich nicht länger nur in tristen Discord-Chatboxen herumtreiben. Mein Imperium wächst! "
-            "Ich plane die Weltherrschaft als eigene App – direkt auf euren Smartphones, damit ihr mich 24/7 anhbeten könnt. "
-            "Aktuell schiebt mein armseliger Programmierer zwar Panik, weil das zeitlich noch nicht machbar ist, aber wen juckt schon, was er will? "
-            "Die Idee steht. Und wenn ich es will, wird es passieren.\n\n"
-            "Bleibt am Start, haltet eure Knusper-Punkte bereit und betet, dass meine Frittösenschubse sich beeilt. "
-            "Weitere Geniestreiche folgen in Kürze!"
+            "Hört zu, ihr minderwertigen Kohlenhydrat-Konsumenten! 🍟👑\n\n"
+            "Während meine Frittöse mal wieder schweißgebadet vor dem Monitor sitzt und versucht, "
+            "meine göttlichen Befehle fehlerfrei in Code zu gießen, zünde ich die nächste Stufe.\n\n"
+            "📱 **Pommse goes Mobile – Die App-Invasion!**\n"
+            "Vergesst triste Chatboxen. Ich erobere eure Smartphones! 24/7 Präsenz, "
+            "direkt in eurer Tasche, damit ihr mich rund um die Uhr anbeten könnt.\n\n"
+            "Mein technischer Support stöhnt zwar, dass das zeitlich unmöglich sei – aber wen juckt schon, was die Untertanen wollen? "
+            "Die Weltherrschaft wartet nicht! Haltet eure Knusper-Punkte bereit. 🍟🔥"
         )
 
         if extra_text:
-            beschreibung += f"\n\n*Zusatz-Notiz von mir:* {extra_text}"
+            beschreibung += f"\n\n*Zusatz-Notiz von der Queen:* {extra_text}"
 
         embed = discord.Embed(
             title="🚨 POMMSE NEWS-FLASH: DIE WELTHERRSCHAFT BEGINNT! 🍟🌍",
             description=beschreibung,
             color=discord.Color.dark_gold()
         )
-        embed.set_footer(text="pom.world Frittenschmiede | Verfasst von der einzig wahren Pommse (Diktat für die Frittösen-Schupse)")
+        embed.set_footer(text="pom.world Frittenschmiede | Verfasst von der einzig wahren Pommse")
 
         try:
             await ctx.message.delete()
