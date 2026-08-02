@@ -1,0 +1,289 @@
+import discord
+from discord.ext import commands
+import os
+import random
+import psycopg2
+
+def get_db_connection():
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
+
+class Pets(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.init_db()
+
+    def init_db(self):
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Tabelle für das Knusper-Pet
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_pets (
+                user_id TEXT PRIMARY KEY,
+                pet_name TEXT,
+                hunger INT DEFAULT 100,
+                level INT DEFAULT 1,
+                accessoires TEXT DEFAULT 'Keine'
+            );
+        """)
+        # Tabelle für den Shop / Menü (Käufe)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_inventory (
+                user_id TEXT,
+                item_name TEXT,
+                PRIMARY KEY (user_id, item_name)
+            );
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+
+    # --- LUSTIGE ZUFALLSNAMEN FÜR FRITTEN-PETS ---
+    ZUFALLS_NAMEN = [
+        "Knuffi die Fritte",
+        "Sir Crispy Crisp",
+        "Madame Mayo",
+        "Ketchup-King",
+        "Salzige Susi",
+        "Goldgelb der Zerstörer",
+        "Frittierte Felicitas",
+        "Panierter Paul",
+        "Crispy Carl",
+        "Dip-Master 3000",
+        "Fettige Fratze",
+        "Heißes Ölgchen"
+    ]
+
+    # --- SHOP / MENÜ ---
+    SHOP_ANGEBOT = {
+        "sonnenbrille": {"preis": 500, "typ": "Accessoire", "desc": "Cooler Look für das Pet 🕶️"},
+        "ketchup_huetchen": {"preis": 750, "typ": "Accessoire", "desc": "Ein Hütchen aus echtem Ketchup 🍅"},
+        "goldene_kruste": {"preis": 2000, "typ": "Upgrade", "desc": "Vergoldet deine Fritte für maximale Flex-Garantie ✨"},
+        "extra_dip": {"preis": 300, "typ": "Nahrung", "desc": "Spezielle Joppiesauce für glückliche Pets 🇳🇱"}
+    }
+
+    @commands.command(name="menue", aliases=["shop", "speisekarte"])
+    async def menue(self, ctx):
+        """Zeigt die Speisekarte für Accessoires und Items für dein Knusper-Pet!"""
+        embed = discord.Embed(
+            title="🍟 Pommse' Fritten- & Accessoire-Menü",
+            description="Kaufe mit deinen Knusper-Punkten (`!kaufen <item>`) stylische Upgrades für dein Pet!",
+            color=discord.Color.gold()
+        )
+        
+        for item, daten in self.SHOP_ANGEBOT.items():
+            embed.add_field(
+                name=f"{item.capitalize()} ({daten['preis']} 🍟)",
+                value=f"*{daten['desc']}*\nTyp: {daten['typ']}",
+                inline=False
+            )
+        embed.set_footer(text="Tippe !kaufen <name> zum Bestellen!")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="kaufen")
+    async def kaufen(self, ctx, *, item_name: str):
+        """Kaufe ein Item aus dem Menü für dein Pet."""
+        item_name = item_name.lower().replace(" ", "_")
+        
+        if item_name not in self.SHOP_ANGEBOT:
+            await ctx.send("❌ Dieses Gericht/Item steht nicht auf unserer Speisekarte! Tippe `!menue`, um das Angebot zu sehen.")
+            return
+
+        preis = self.SHOP_ANGEBOT[item_name]["preis"]
+        user_id = str(ctx.author.id)
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Punkte prüfen
+        cur.execute("SELECT knusper_punkte FROM user_economy WHERE user_id = %s;", (user_id,))
+        row = cur.fetchone()
+        userpunkte = row[0] if row else 0
+
+        if userpunkte < preis:
+            cur.close()
+            conn.close()
+            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du brauchst **{preis} 🍟**, hast aber nur **{userpunkte} 🍟**.")
+            return
+
+        # Prüfen ob Item schon gekauft
+        cur.execute("SELECT * FROM user_inventory WHERE user_id = %s AND item_name = %s;", (user_id, item_name))
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            await ctx.send(f"⚠️ Du hast **{item_name.capitalize()}** bereits gekauft!")
+            return
+
+        # Kauf abwickeln: Punkte abziehen & Item ins Inventar
+        cur.execute("UPDATE user_economy SET knusper_punkte = knusper_punkte - %s WHERE user_id = %s;", (preis, user_id))
+        cur.execute("INSERT INTO user_inventory (user_id, item_name) VALUES (%s, %s);", (user_id, item_name))
+        
+        # Pet-Accessoire aktualisieren falls es ein Accessoire ist
+        if self.SHOP_ANGEBOT[item_name]["typ"] in ["Accessoire", "Upgrade"]:
+            cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (item_name.capitalize(), user_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        await ctx.send(f"🎉 **Bestellung erfolgreich!** {ctx.author.mention} hat sich **{item_name.capitalize()}** für {preis} 🍟 gegönnt! Dein Pet freut sich riesig.")
+
+    # --- PET SYSTEM ---
+    @commands.command(name="pet", aliases=["knusperpet"])
+    async def pet(self, ctx):
+        """Zeigt dein persönliches Knusper-Pet."""
+        user_id = str(ctx.author.id)
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("SELECT pet_name, hunger, level, accessoires FROM user_pets WHERE user_id = %s;", (user_id,))
+        row = cur.fetchone()
+        
+        if not row:
+            # Wähle einen zufälligen Namen aus der Liste für das neue Pet!
+            zufalls_name = random.choice(self.ZUFALLS_NAMEN)
+            cur.execute("INSERT INTO user_pets (user_id, pet_name) VALUES (%s, %s);", (user_id, zufalls_name))
+            conn.commit()
+            pet_name, hunger, level, accessoires = zufalls_name, 100, 1, "Keine"
+        else:
+            pet_name, hunger, level, accessoires = row[0], row[1], row[2], row[3]
+        
+        cur.close()
+        conn.close()
+
+        embed = discord.Embed(
+            title=f"🐾 Knusper-Pet von {ctx.author.name}",
+            description=f"Name: **{pet_name}**\n",
+            color=discord.Color.orange()
+        )
+        embed.add_field(name="Hunger-Status", value=f"{'🍟' * (hunger // 20)} ({hunger}/100)", inline=False)
+        embed.add_field(name="Level", value=f"⭐ {level}", inline=True)
+        embed.add_field(name="Ausstattung", value=f"🕶️ {accessoires}", inline=True)
+        embed.set_footer(text="Füttere mit !fuettern oder benenne es mit !petumbenennen um!")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="fuettern", aliases=["feed"])
+    async def fuettern(self, ctx):
+        """Füttere dein Knusper-Pet mit 50 Knusper-Punkten, damit es satt und knusprig bleibt!"""
+        user_id = str(ctx.author.id)
+        futter_kosten = 50
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT knusper_punkte FROM user_economy WHERE user_id = %s;", (user_id,))
+        row_eko = cur.fetchone()
+        userpunkte = row_eko[0] if row_eko else 0
+
+        if userpunkte < futter_kosten:
+            cur.close()
+            conn.close()
+            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Füttern kostet **{futter_kosten} 🍟**, du hast aber nur **{userpunkte} 🍟**.")
+            return
+
+        cur.execute("SELECT hunger, level FROM user_pets WHERE user_id = %s;", (user_id,))
+        row_pet = cur.fetchone()
+        if not row_pet:
+            zufalls_name = random.choice(self.ZUFALLS_NAMEN)
+            cur.execute("INSERT INTO user_pets (user_id, pet_name, hunger) VALUES (%s, %s, 100);", (user_id, zufalls_name))
+            hunger, level = 100, 1
+        else:
+            hunger, level = row_pet[0], row_pet[1]
+
+        nuevo_hunger = min(100, hunger + 25)
+
+        cur.execute("UPDATE user_economy SET knusper_punkte = knusper_punkte - %s WHERE user_id = %s;", (futter_kosten, user_id))
+        cur.execute("""
+            INSERT INTO user_pets (user_id, hunger) VALUES (%s, %s)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET hunger = %s;
+        """, (user_id, nuevo_hunger, nuevo_hunger))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        await ctx.send(f"😋 **Mjam!** {ctx.author.mention} hat sein Pet für {futter_kosten} 🍟 gefüttert. Der Hunger-Status liegt jetzt bei **{nuevo_hunger}/100**! 🍟✨")
+
+    @commands.command(name="petumbenennen", aliases=["umbenennen"])
+    async def petumbenennen(self, ctx, *, neuer_name: str):
+        """Benenne dein Knusper-Pet nach deinen Wünschen um! (z.B. !petumbenennen Knobi-Dip)"""
+        user_id = str(ctx.author.id)
+        
+        # Begrenze die Länge des Namens zur Sicherheit (z.B. max 30 Zeichen)
+        if len(neuer_name) > 30:
+            await ctx.send("❌ Der Name ist zu lang! Max. 30 Zeichen sind erlaubt.")
+            return
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM user_pets WHERE user_id = %s;", (user_id,))
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            await ctx.send("❌ Du hast noch gar kein Pet! Tippe zuerst `!pet`, um eins zu bekommen.")
+            return
+
+        cur.execute("UPDATE user_pets SET pet_name = %s WHERE user_id = %s;", (neuer_name, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        await ctx.send(f"✨ **Namensänderung erfolgreich!** Dein Knusper-Pet heißt ab jetzt offiziell **{neuer_name}**! 🍟🐾")
+
+    @commands.command(name="petschenken", aliases=["petvergeben", "pettausch"])
+    async def petschenken(self, ctx, member: discord.Member):
+        """Schenke oder übertrage dein Knusper-Pet an ein anderes Mitglied!"""
+        if member == ctx.author:
+            await ctx.send("❌ Du kannst dein Pet nicht dir selbst schenken, du hast es doch schon!")
+            return
+        
+        if member.bot:
+            await ctx.send("❌ Bots wollen keine Fritten adoptieren, die verbrennen nur im Prozessor!")
+            return
+
+        sender_id = str(ctx.author.id)
+        empfaenger_id = str(member.id)
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Prüfen ob der Absender ein Pet hat
+        cur.execute("SELECT pet_name, hunger, level, accessoires FROM user_pets WHERE user_id = %s;", (sender_id,))
+        sender_pet = cur.fetchone()
+
+        if not sender_pet:
+            cur.close()
+            conn.close()
+            await ctx.send("❌ Du hast gar kein Knusper-Pet, das du verschenken könntest! Tippe erst `!pet`.")
+            return
+
+        # Prüfen ob der Empfänger schon ein Pet hat
+        cur.execute("SELECT user_id FROM user_pets WHERE user_id = %s;", (empfaenger_id,))
+        empfaenger_pet = cur.fetchone()
+
+        if empfaenger_pet:
+            cur.close()
+            conn.close()
+            await ctx.send(f"⚠️ {member.mention} hat bereits ein eigenes Knusper-Pet! Jeder Spieler darf nur eins besitzen.")
+            return
+
+        pet_name, hunger, level, accessoires = sender_pet
+        
+        # Altes Pet beim Absender löschen
+        cur.execute("DELETE FROM user_pets WHERE user_id = %s;", (sender_id,))
+        
+        # Neues Pet beim Empfänger eintragen
+        cur.execute("""
+            INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) 
+            VALUES (%s, %s, %s, %s, %s);
+        """, (empfaenger_id, pet_name, hunger, level, accessoires))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        await ctx.send(f"🎁 **Adoption geglückt!** {ctx.author.mention} hat sein treues Pet **{pet_name}** an {member.mention} verschenkt! 🍟🐾")
+
+async def setup(bot):
+    await bot.add_cog(Pets(bot))
