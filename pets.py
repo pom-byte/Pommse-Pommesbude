@@ -140,7 +140,6 @@ class Pets(commands.Cog):
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
         cur.execute("INSERT INTO user_inventory (user_id, item_name) VALUES (%s, %s);", (user_id, item_name))
         
-        # Alle Accessoires und Upgrades aus dem Inventar auslesen und kombinieren
         if item_typ in ["Accessoire", "Upgrade"]:
             cur.execute("SELECT item_name FROM user_inventory WHERE user_id = %s;", (user_id,))
             alle_items = cur.fetchall()
@@ -176,7 +175,6 @@ class Pets(commands.Cog):
         else:
             pet_name, hunger, level, accessoires = row[0], row[1], row[2], row[3]
             
-            # Automatischer Abgleich mit dem Inventar, damit alles korrekt angezeigt wird
             cur.execute("SELECT item_name FROM user_inventory WHERE user_id = %s;", (user_id,))
             alle_items = cur.fetchall()
             gekauft_liste = []
@@ -210,7 +208,13 @@ class Pets(commands.Cog):
 
         cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
         row_eko = cur.fetchone()
-        userpunkte = row_eko[0] if row_eko else 0
+        
+        if not row_eko:
+            cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
+            conn.commit()
+            userpunkte = 100
+        else:
+            userpunkte = row_eko[0]
 
         if userpunkte < futter_kosten:
             cur.close()
