@@ -66,6 +66,32 @@ class Games(commands.Cog):
         except Exception as e:
             print(f"Fehler bei update_punkte: {e}")
 
+    # --- 0. CASINO ÜBERSICHT ---
+    @commands.command(name="casino")
+    async def casino(self, ctx):
+        embed = discord.Embed(
+            title="🎰 Willkommen im Knusper-Casino!",
+            description="Setze deine Knusper-Punkte und räume ab! Verfügbare Spiele:",
+            color=discord.Color.gold()
+        )
+        embed.add_field(
+            name="🔴 Roulette",
+            value="Setze auf Farben!\n`!roulette <einsatz> <rot/schwarz/gruen>`",
+            inline=False
+        )
+        embed.add_field(
+            name="✂️ Schere, Stein, Papier",
+            value="Tritt gegen den Bot an!\n`!ssp <schere/stein/papier> [einsatz]`",
+            inline=False
+        )
+        embed.add_field(
+            name="🎲 Würfel-Duell",
+            value="Wer würfelt höher?\n`!wuerfel [einsatz]`",
+            inline=False
+        )
+        embed.set_footer(text="Viel Glück! 🍟🎲")
+        await ctx.send(embed=embed)
+
     # --- 1. ROULETTE ---
     @commands.command(name="roulette")
     async def roulette(self, ctx, einsatz: int, wahl: str):
