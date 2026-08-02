@@ -61,7 +61,7 @@ Thread(target=run).start()
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # WICHTIG: Erlaubt das Erkennen von neuen Mitgliedern & Spitznamen
+intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -72,7 +72,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    init_db()  # HIER WIRD DIE DATENBANK AKTIVIERT
+    init_db()
     print(f"🍟 Pommse ist am Start und bereit zum Frittieren! (Eingeloggt als {bot.user})")
     await bot.change_presence(
         activity=discord.Activity(
@@ -84,7 +84,6 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    """Begrüßt neue User standesgemäß in der pom.world Frittenschmiede"""
     channel = discord.utils.get(member.guild.text_channels, name="willkommen") 
     if not channel:
         channel = member.guild.text_channels[0]
@@ -134,8 +133,7 @@ async def on_message(message):
 # SPITZNAMEN- & ROLLEN-FEATURES
 # ==========================================
 
-# SPITZNAMEN_LISTE =  
-[
+SPITZNAMEN_LISTE = [
     "curly fries 🌀",
     "Halbgare Fritte 🍟",
     "Mayo-Majestät 👑",
@@ -206,7 +204,8 @@ async def stammgast(ctx, member: discord.Member):
 @commands.has_permissions(administrator=True)
 async def update(ctx, version: str = "0.4"):
     """Pommse verkündet die neuesten Updates und lästert über seine Menschen"""
-    target_channel = discord.utils.get(ctx.guild.text_channels, name="updates")
+    # Hier wurde der Kanalname direkt auf deinen echten Kanal angepasst:
+    target_channel = discord.utils.get(ctx.guild.text_channels, name="👉-updates")
     if not target_channel:
         target_channel = ctx.channel
 
