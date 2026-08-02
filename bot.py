@@ -550,6 +550,9 @@ async def kompliment(ctx, member: discord.Member = None):
         f"👑 {target}, absolute Sahnestück-Fritte!",
         f"✨ {target}, du bist knackiger als eine frische Riffelpommse direkt aus dem 180-Grad-Öl!",
         f"🍟 {target}, du Hottie, selbst die edelste Mayo würde vor Neid erblassen, wenn sie dich sieht!",
+        f"🥔 {target}, du bist kein normaler Erdäpfel, du bist pure goldbraune Perfektion!",
+        f"🌟 {target}, bei dir knuspert's im Herzen – absolute Meisterklasse!",
+        f"💎 {target}, du glänzst ja fast so schön wie frisch gewechseltes Rapsöl!",
     ]
     await ctx.send(random.choice(komplimente_liste))
     
@@ -560,9 +563,12 @@ async def dippen(ctx, member: discord.Member = None):
         f"🌶️ {target}, wenn du eine Pommes wärst, würde ich dich nicht nur in Mayo dippen, sondern in der schärfsten Habanero-Soße baden lassen, bis die Fritteuse kocht!",
         f"🥵 {target}, du brennst so heiß, da schmilzt nicht nur das Rapsöl – du legst hier gerade den ganzen Imbiss lahm!",
         f"🔥 {target}, bei deinem Anblick fängt selbst die kälteste Tiefkühlkost an zu knistern. Wollen wir die Temperatur erhöhen?",
+        f"🔥 {target}, du machst mich heißer als die heißeste Frittenfettfrittöse!",
+        f"❤️‍🔥 {target}, du bringst das Fett zum Blubbern und das Herz zum Schmelzen. Da braucht man gar kein Ketchup mehr!",
+        f"🍯 {target}, du bist so süß-scharf, gegen dich ist jede Joppiesauce nur langweiliger Industriedreck!",
+        f"⚡ {target}, du stehst so dermaßen unter Strom, du heizt die Fritteuse im Alleingang auf 300 Grad hoch!"
     ]
-    await ctx.send(random.choice(flirt_sprueche))
-    
+    await ctx.send(random.choice(flirt_sprueche))    
 
 # ==========================================
 # KNUSPER-MENÜ & BESTELL-SYSTEM
