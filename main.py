@@ -8,17 +8,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Webserver für Render Keep-Alive
 app = Flask('')
 
 @app.route('/')
 def home():
     return "Pommse ist online und frittiert!"
-
-def run():
-    app.run(host='0.0.0.0', port=10000)
-
-Thread(target=run).start()
 
 # Bot Setup
 intents = discord.Intents.default()
@@ -32,7 +26,6 @@ async def on_ready():
     print(f"Eingeloggt als {bot.user} (ID: {bot.user.id})")
     print("Pommse-Universum ist online in der Cloud! 🍟🚀")
 
-# Funktion zum Laden der Cogs
 async def lade_cogs():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
@@ -47,6 +40,15 @@ async def lade_cogs():
 async def setup_hook():
     await lade_cogs()
 
-# Bot starten
-token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
-bot.run(token)
+# Startet Flask in einem sicheren Daemon-Thread, der sofort aktiv ist
+def run_flask():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
+if __name__ == "__main__":
+    t = Thread(target=run_flask)
+    t.daemon = True
+    t.start()
+    
+    # Bot starten
+    token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
+    bot.run(token)
