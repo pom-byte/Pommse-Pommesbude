@@ -19,6 +19,14 @@ class Games(commands.Cog):
                     highscore INT DEFAULT 0
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_fische (
+                    user_id BIGINT,
+                    fisch_name TEXT,
+                    anzahl INT DEFAULT 1,
+                    PRIMARY KEY (user_id, fisch_name)
+                );
+            """)
             conn.commit()
             cur.close()
             conn.close()
@@ -53,7 +61,6 @@ class Games(commands.Cog):
             if not row:
                 cur.execute("INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, %s, 0);", (user_id, 100 + menge))
             else:
-                # Highscore nur erhöhen, wenn ein positiver Gewinn erzielt wurde
                 if menge > 0:
                     cur.execute("UPDATE user_punkte SET punkte = punkte + %s, highscore = highscore + %s WHERE user_id = %s;", (menge, menge, user_id))
                 else:
@@ -64,11 +71,13 @@ class Games(commands.Cog):
         except Exception as e:
             print(f"Fehler bei update_punkte: {e}")
 
+    # --- CASINO & MINISPIELE ---
+
     @commands.command(name="casino")
     async def casino(self, ctx):
         embed = discord.Embed(
-            title="🎰 Willkommen im Knusper-Casino!",
-            description="Setze deine Knusper-Punkte und räume ab! Verfügbare Spiele:",
+            title="🎰 Willkommen im Knusper-Casino & Spieleparadies!",
+            description="Setze deine Knusper-Punkte, angel dir den dicken Fisch oder räume ab! Verfügbare Befehle:",
             color=discord.Color.gold()
         )
         embed.add_field(
@@ -84,6 +93,11 @@ class Games(commands.Cog):
         embed.add_field(
             name="🎲 Würfel-Duell",
             value="Wer würfelt höher?\n`!wuerfel [einsatz]`",
+            inline=False
+        )
+        embed.add_field(
+            name="🎣 Angeln & Fischeimer",
+            value="Wirf die Angel aus oder zeige deinen Eimer!\n`!angeln` | `!fischeimer`",
             inline=False
         )
         embed.set_footer(text="Viel Glück! 🍟🎲")
@@ -122,10 +136,7 @@ class Games(commands.Cog):
         else:
             ergebnis_farbe = "rot"
 
-        embed = discord.Embed(
-            title="🎰 Knusper-Casino Roulette",
-            color=discord.Color.red()
-        )
+        embed = discord.Embed(title="🎰 Knusper-Casino Roulette", color=discord.Color.red())
         embed.add_field(name="Gezogene Zahl", value=f"**{ergebnis_zahl}** ({ergebnis_farbe.capitalize()})", inline=False)
 
         if gewaehlte_farbe == ergebnis_farbe:
@@ -227,6 +238,86 @@ class Games(commands.Cog):
             else:
                 embed.description = f"🤝 **Unentschieden!** Beide hatten eine {user_wurf}."
 
+        await ctx.send(embed=embed)
+
+    # --- ANGELN & FISCHEIMER ---
+
+    FANG_TABELLE = [
+        ("Alte Socke", "🧦", 5, 25),
+        ("Kleine Krabbe", "🦀", 15, 25),
+        ("Frittierter Hering", "🐟", 30, 20),
+        ("Knusper-Lachs", "🍣", 60, 15),
+        ("Garnierte Garnele", "🦐", 100, 10),
+        ("Goldener Knusper-Karpfen", "✨🐠", 300, 5)
+    ]
+
+    @commands.command(name="angeln", aliases=["fish", "fischen"])
+    @commands.cooldown(1, 300, commands.BucketType.user)
+    async def angeln(self, ctx):
+        fische = [f[0] for f in self.FANG_TABELLE]
+        gewichte = [f[3] for f in self.FANG_TABELLE]
+        
+        gefangener_fisch_name = random.choices(fische, weights=gewichte, k=1)[0]
+        fisch_daten = next(f for f in self.FANG_TABELLE if f[0] == gefangener_fisch_name)
+        symbol, wert = fisch_daten[1], fisch_daten[2]
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            INSERT INTO user_fische (user_id, fisch_name, anzahl)
+            VALUES (%s, %s, 1)
+            ON CONFLICT (user_id, fisch_name)
+            DO UPDATE SET anzahl = user_fische.anzahl + 1;
+        """, (ctx.author.id, gefangener_fisch_name))
+
+        cur.execute("""
+            INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;
+        """, (ctx.author.id, wert, wert))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        embed = discord.Embed(
+            title="🎣 Petris Frittier-Heil!",
+            description=f"{ctx.author.mention} hat die Angel ausgeworfen und etwas gefangen!",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Gefangen:", value=f"{symbol} **{gefangener_fisch_name}**", inline=False)
+        embed.add_field(name="Wert:", value=f"💰 **+{wert} Knusper-Punkte**", inline=True)
+        embed.set_footer(text="Dein Fang liegt in deinem Eimer (!fischeimer).")
+
+        await ctx.send(embed=embed)
+
+    @angeln.error
+    async def angeln_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            minuten = int(error.retry_after // 60)
+            sekunden = int(error.retry_after % 60)
+            await ctx.send(f"⏳ **Geduld, Anglerkollege!** Die Fische beißen gerade nicht. Warte noch **{minuten}m {sekunden}s**.")
+
+    @commands.command(name="fischeimer", aliases=["fische", "eimer"])
+    async def fischeimer(self, ctx):
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT fisch_name, anzahl FROM user_fische WHERE user_id = %s AND anzahl > 0;", (ctx.author.id,))
+        ergebnisse = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not ergebnisse:
+            await ctx.send(f"🪣 {ctx.author.mention}, dein Fischeimer ist noch leer! Tippe `!angeln`.")
+            return
+
+        embed = discord.Embed(title=f"🪣 Fischeimer von {ctx.author.name}", color=discord.Color.teal())
+        text = ""
+        for name, anzahl in ergebnisse:
+            symbol = next((f[1] for f in self.FANG_TABELLE if f[0] == name), "🐟")
+            text += f"{symbol} **{name}**: {anzahl}x\n"
+
+        embed.description = text
         await ctx.send(embed=embed)
 
 async def setup(bot):
