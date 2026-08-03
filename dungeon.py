@@ -16,7 +16,6 @@ class Dungeon(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Tabelle für das Inventar / Loot der Spieler
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_inventar (
                     id SERIAL PRIMARY KEY,
@@ -88,7 +87,7 @@ class Dungeon(commands.Cog):
             
             embed.add_field(name="Pommses Kommentar", value=f"*{kommentar}*", inline=False)
 
-        ‍elif 10 <= wurf <= 18:
+        elif 10 <= wurf <= 18:
             # Guter Erfolg
             embed.description = "Du hast den Raum gesäubert und ein paar Knusper-Reste eingesammelt!"
             embed.color = discord.Color.blue()
