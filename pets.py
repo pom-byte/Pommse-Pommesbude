@@ -41,6 +41,10 @@ class Pets(commands.Cog):
                     wert INT DEFAULT 15
                 );
             """)
+            # Behebt den Spaltenfehler direkt beim Start, falls die Tabelle schon existierte
+            cur.execute("""
+                ALTER TABLE user_inventory ADD COLUMN IF NOT EXISTS wert INT DEFAULT 15;
+            """)
             conn.commit()
             cur.close()
             conn.close()
