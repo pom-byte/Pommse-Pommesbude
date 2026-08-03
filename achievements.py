@@ -94,7 +94,7 @@ class Achievements(commands.Cog):
         gesamt_zaehler = len(alle)
 
         for key, titel, beschreibung, spruch in alle:
-            if key in freigeschaltetet_check := (key in freigeschaltet):
+            if key in freigeschaltet:
                 status = "✅ **Freigeschaltet**"
                 erreicht_zaehler += 1
             else:
