@@ -62,12 +62,6 @@ class Economy(commands.Cog):
             return result[0], result[1]
         return 0, 0
 
-    @commands.Cog.listener()
-    async def on_command_completion(self, ctx):
-        if ctx.author.bot:
-            return
-        self.add_punkte_und_highscore(ctx.author.id, punkte_delta=0, highscore_delta=1)
-
     @commands.command(name="daily")
     async def daily(self, ctx):
         conn = get_db_connection()
@@ -82,7 +76,8 @@ class Economy(commands.Cog):
             await ctx.send(f"🛑 {ctx.author.mention}, du hast dir deine tägliche Frittier-Ration heute schon abgeholt! Komm morgen wieder.")
             return
             
-        self.add_punkte_und_highscore(ctx.author.id, punkte_delta=50, highscore_delta=5)
+        # Beim Daily gibt es Punkte und einen echten Highscore-Zuwachs (+50)
+        self.add_punkte_und_highscore(ctx.author.id, punkte_delta=50, highscore_delta=50)
         cursor.execute("INSERT INTO user_daily (user_id, last_daily) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET last_daily = %s", (ctx.author.id, heute, heute))
         conn.commit()
         cursor.close()
@@ -132,7 +127,6 @@ class Economy(commands.Cog):
         for i, (user_id, kontostand, highscore) in enumerate(ergebnisse, 1):
             user = ctx.guild.get_member(user_id)
             name = user.mention if user else f"User-ID: {user_id}"
-            
             medaille = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
             text += f"{medaille} {name} – **{highscore} ⭐** *(Konto: {kontostand} 🍟)*\n"
 
@@ -153,7 +147,7 @@ class Economy(commands.Cog):
             await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_konto} 🍟)")
             return
 
-        # Punkte abziehen und dem Ziel gutschreiben
+        # Punkte abziehen und dem Ziel gutschreiben (Schenken erhöht den Highscore des Empfängers nicht, da es kein "Verdienst" ist)
         self.add_punkte_und_highscore(ctx.author.id, -anzahl, 0)
         self.add_punkte_und_highscore(member.id, anzahl, 0)
 
