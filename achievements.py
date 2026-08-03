@@ -16,7 +16,7 @@ class Achievements(commands.Cog):
             conn = get_db_connection()
             cur = conn.cursor()
             
-            # Tabelle für alle möglichen Achievements + Pommses Sprüche dazu
+            # Tabelle für alle möglichen Achievements + Pommses Sprüche
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS achievements_liste (
                     id SERIAL PRIMARY KEY,
@@ -33,17 +33,18 @@ class Achievements(commands.Cog):
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT,
                     achievement_key TEXT,
-                    zeitpunkt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    zeitpunkt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT unique_user_achievement UNIQUE (user_id, achievement_key)
                 );
             """)
             conn.commit()
 
-            # Ein paar herrlich uff-mäßige Standard-Achievements einfügen (falls noch nicht da)
+            # Erweiterte Standard-Achievements für Fritten-Buden-Legenden
             default_achievements = [
                 ("erster_muell", "Der erste Schrott", "Du hast deinen ersten Müll im Dungeon gefunden.", "Du findest Müll und freust dich auch noch? Ich bewundere deine niedrigen Ansprüche."),
-                ("muellverkaeufer", "Recycling-Profi", "Du hast deinen Müll im Pfandhaus verscherbelt.", "Du verkaufst also deinen eigenen Unrat. Kapitalismus im Endstadium, ich liebe es."),
-                ("pechvogel", "Bodenkontakt", "Du hast eine epische 1 gewürfelt.", "Eine 1. Du hast den Boden gefunden. Er hat dich vermutlich ausgelacht."),
-                ("glueckspilz", "Glücksritter", "Du hast eine natürliche 20 gewürfelt!", "Eine 20?! Wer hat denn hier an den Einstellungen gedreht? Das war pure Bestechung."),
+                ("muellverkaeufer", "Recycling-Profi", "Du hast deinen Müll oder Fisch im Menü verscherbelt.", "Du verkaufst also deinen Unrat. Kapitalismus im Endstadium, ich liebe es."),
+                ("angler_koenig", "Meister am Haken", "Du hast deinen ersten fetten Fisch geangelt.", "Fisch im Eimer. Riecht streng, passt aber zur Bude."),
+                ("tierfreund", "Knusper-Pfleger", "Du hast dein Pet das erste Mal gefüttert.", "Dein Pet lebt noch? Ich bin fast enttäuscht."),
                 ("alufolie", "High-Tech-Schutz", "Du hast einen Ritterhelm aus Alufolie ergattert.", "Ein Helm aus Alufolie. Damit schützt du dich vor 5G und schlechtem Geschmack gleichermaßen.")
             ]
 
@@ -86,7 +87,6 @@ class Achievements(commands.Cog):
 
         embed = discord.Embed(
             title=f"🏆 Ruhmeshalle & Fassungslosigkeit von {target.name}",
-            description="Hier sind die Meilensteine – und Pommses ehrliche (meist schockierte) Meinung dazu.",
             color=discord.Color.purple()
         )
 
