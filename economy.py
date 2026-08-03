@@ -3,20 +3,16 @@ import random
 import datetime
 import discord
 from discord.ext import commands
-import psycopg2
+from database import get_db_connection
 
 class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.init_db()
 
-    def get_db_connection(self):
-        database_url = os.getenv("DATABASE_URL")
-        return psycopg2.connect(database_url, sslmode='require')
-
     def init_db(self):
         try:
-            conn = self.get_db_connection()
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_punkte (
@@ -40,10 +36,8 @@ class Economy(commands.Cog):
         except Exception as e:
             print(f"Fehler bei DB-Init in Economy: {e}")
 
-    # --- ZENTRALE FUNKTIONEN FÜR PUNKTE & HIGHSCORE ---
     def add_punkte_und_highscore(self, user_id, punkte_delta, highscore_delta):
-        """Ändert den Kontostand (kann positiv/negativ sein) und erhöht den Lebenszeit-Highscore."""
-        conn = self.get_db_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, 0, 0) ON CONFLICT (user_id) DO NOTHING", 
@@ -58,8 +52,7 @@ class Economy(commands.Cog):
         conn.close()
 
     def get_user_daten(self, user_id):
-        """Gibt (kontostand, highscore) zurück."""
-        conn = self.get_db_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT punkte, highscore FROM user_punkte WHERE user_id = %s", (user_id,))
         result = cursor.fetchone()
@@ -69,18 +62,15 @@ class Economy(commands.Cog):
             return result[0], result[1]
         return 0, 0
 
-    # --- AUTOMATISCHER HIGHSCORE IM HINTERGRUND FÜR JEDEN BEFEHL ---
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
-        """Wird automatisch im Hintergrund ausgeführt, wenn ein Befehl erfolgreich war (+1 Highscore)."""
         if ctx.author.bot:
             return
         self.add_punkte_und_highscore(ctx.author.id, punkte_delta=0, highscore_delta=1)
 
-    # --- BEFEHLE ---
     @commands.command(name="daily")
     async def daily(self, ctx):
-        conn = self.get_db_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT last_daily FROM user_daily WHERE user_id = %s", (ctx.author.id,))
         result = cursor.fetchone()
@@ -118,7 +108,7 @@ class Economy(commands.Cog):
     @commands.command(name="rangliste", aliases=["leaderboard", "top"])
     async def rangliste(self, ctx):
         try:
-            conn = self.get_db_connection()
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT user_id, punkte, highscore FROM user_punkte ORDER BY highscore DESC LIMIT 10")
             ergebnisse = cursor.fetchall()
@@ -162,19 +152,12 @@ class Economy(commands.Cog):
         if sender_konto < anzahl:
             await ctx.send(f"❌ So viele Punkte hast du gar nicht auf dem Konto! (Aktuell: {sender_konto} 🍟)")
             return
-            
-        self.add_punkte_und_highscore(ctx.author.id, punkte_delta=-anzahl, highscore_delta=0)
-        self.add_punkte_und_highscore(member.id, punkte_delta=anzahl, highscore_delta=0)
-        
-        await ctx.send(f"💸 {ctx.author.mention} hat **{anzahl} Knusper-Punkte** an {member.mention} rüberschoben! Stabil! 🤝🍟")
 
-    @commands.command(name="cheat", aliases=["adminpunkte", "fabian"])
-    @commands.has_permissions(administrator=True)
-    async def cheat(self, ctx, anzahl: int, member: discord.Member = None):
-        target = member if member else ctx.author
-        self.add_punkte_und_highscore(target.id, punkte_delta=anzahl, highscore_delta=anzahl)
-        kontostand, highscore = self.get_user_daten(target.id)
-        await ctx.send(f"🚨 **ADMIN-CHEAT AKTIVIERT!** {target.mention} hat **{anzahl} Punkte** erhalten!\n*(Konto: {kontostand} 🍟 | Highscore: {highscore} ⭐)* 🛢️✨")
+        # Punkte abziehen und dem Ziel gutschreiben
+        self.add_punkte_und_highscore(ctx.author.id, -anzahl, 0)
+        self.add_punkte_und_highscore(member.id, anzahl, 0)
+
+        await ctx.send(f"🎁 {ctx.author.mention} hat {member.mention} **{anzahl} 🍟 Knusper-Punkte** geschenkt!")
 
 async def setup(bot):
     await bot.add_cog(Economy(bot))

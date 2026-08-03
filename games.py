@@ -1,11 +1,7 @@
 import discord
 from discord.ext import commands
-import os
 import random
-import psycopg2
-
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
+from database import get_db_connection
 
 class Games(commands.Cog):
     def __init__(self, bot):
@@ -16,7 +12,6 @@ class Games(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Sicherstellen, dass die Tabelle existiert und 'punkte' heißt
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_punkte (
                     user_id BIGINT PRIMARY KEY,
@@ -29,7 +24,6 @@ class Games(commands.Cog):
         except Exception as e:
             print(f"Fehler bei DB-Init in Games: {e}")
 
-    # Sichere Hilfsfunktion für Punkte
     def get_punkte(self, user_id):
         try:
             conn = get_db_connection()
@@ -53,7 +47,6 @@ class Games(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Erst prüfen ob User existiert
             cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
             row = cur.fetchone()
             if not row:
@@ -66,7 +59,6 @@ class Games(commands.Cog):
         except Exception as e:
             print(f"Fehler bei update_punkte: {e}")
 
-    # --- 0. CASINO ÜBERSICHT ---
     @commands.command(name="casino")
     async def casino(self, ctx):
         embed = discord.Embed(
@@ -92,7 +84,6 @@ class Games(commands.Cog):
         embed.set_footer(text="Viel Glück! 🍟🎲")
         await ctx.send(embed=embed)
 
-    # --- 1. ROULETTE ---
     @commands.command(name="roulette")
     async def roulette(self, ctx, einsatz: int, wahl: str):
         user_id = ctx.author.id
@@ -107,7 +98,6 @@ class Games(commands.Cog):
             await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du hast nur **{userpunkte} 🍟**.")
             return
 
-        # Flexibles Mapping für Farben (Deutsch & Englisch)
         wahl_mapping = {
             "rot": "rot", "red": "rot",
             "schwarz": "schwarz", "black": "schwarz",
@@ -119,8 +109,6 @@ class Games(commands.Cog):
             return
 
         gewaehlte_farbe = wahl_mapping[wahl]
-
-        # Roulette Rad: 0 = Grün (1/37), Rest Rot/Schwarz
         ergebnis_zahl = random.randint(0, 36)
         if ergebnis_zahl == 0:
             ergebnis_farbe = "gruen"
@@ -151,7 +139,6 @@ class Games(commands.Cog):
         embed.set_footer(text=f"Neuer Kontostand: {neuer_stand} 🍟")
         await ctx.send(embed=embed)
 
-    # --- 2. SCHERE, STEIN, PAPIER ---
     @commands.command(name="ssp", aliases=["scheresteinpapier"])
     async def ssp(self, ctx, wahl: str, einsatz: int = 0):
         user_id = ctx.author.id
@@ -198,7 +185,6 @@ class Games(commands.Cog):
         
         await ctx.send(embed=embed)
 
-    # --- 3. WÜRFEL-SPIEL ---
     @commands.command(name="wuerfel", aliases=["dice", "roll"])
     async def wuerfel(self, ctx, einsatz: int = 0):
         user_id = ctx.author.id

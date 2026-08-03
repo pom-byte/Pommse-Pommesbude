@@ -1,12 +1,7 @@
 import discord
 from discord.ext import commands
-import os
 import random
-import psycopg2
-
-def get_db_connection():
-    database_url = os.getenv("DATABASE_URL")
-    return psycopg2.connect(database_url, sslmode='require')
+from database import get_db_connection
 
 class Angeln(commands.Cog):
     def __init__(self, bot):
@@ -53,7 +48,6 @@ class Angeln(commands.Cog):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Fisch speichern
         cur.execute("""
             INSERT INTO user_fische (user_id, fisch_name, anzahl)
             VALUES (%s, %s, 1)
@@ -61,7 +55,6 @@ class Angeln(commands.Cog):
             DO UPDATE SET anzahl = user_fische.anzahl + 1;
         """, (ctx.author.id, gefangener_fisch_name))
 
-        # Direkt Knusper-Punkte gutschreiben (Sicherer Direkt-Zugriff auf user_punkte)
         cur.execute("""
             INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s)
             ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;

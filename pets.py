@@ -1,11 +1,7 @@
 import discord
 from discord.ext import commands
-import os
 import random
-import psycopg2
-
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
+from database import get_db_connection
 
 class Pets(commands.Cog):
     def __init__(self, bot):
@@ -16,7 +12,6 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Tabellen absichern
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_pets (
                     user_id BIGINT PRIMARY KEY,
@@ -68,7 +63,7 @@ class Pets(commands.Cog):
     async def menue(self, ctx):
         embed = discord.Embed(
             title="🍟 Pommse' Fritten- & Accessoire-Menü",
-            description="Kaufe Upgrades oder verkaufe deinen Loot/Fisch mit `!verkaufen fish` bzw. `!verkaufen loot`!",
+            description="Kaufe Upgrades oder verkaufe deinen Loot/Fisch mit `!verkaufen fisch` bzw. `!verkaufen loot`!",
             color=discord.Color.gold()
         )
         for item, daten in self.SHOP_ANGEBOT.items():
@@ -103,7 +98,6 @@ class Pets(commands.Cog):
             await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du brauchst **{preis} 🍟**, hast aber nur **{userpunkte} 🍟**.")
             return
 
-        # Wenn Spezialfutter gekauft wird, direkt Hunger auffüllen
         if item_name == "spezialfutter":
             cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
             cur.execute("UPDATE user_pets SET hunger = LEAST(100, hunger + 50) WHERE user_id = %s;", (user_id,))
@@ -113,7 +107,6 @@ class Pets(commands.Cog):
             await ctx.send(f"🍟 **Lecker!** {ctx.author.mention} hat Spezialfutter gekauft und sein Pet gestärkt!")
             return
 
-        # Normale Accessoires / Upgrades prüfen
         cur.execute("SELECT * FROM user_inventory WHERE user_id = %s AND item_name = %s;", (user_id, item_name))
         if cur.fetchone():
             cur.close()
@@ -123,8 +116,6 @@ class Pets(commands.Cog):
 
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
         cur.execute("INSERT INTO user_inventory (user_id, item_name, wert) VALUES (%s, %s, %s);", (user_id, item_name, preis))
-        
-        # Accessoire direkt beim Pet eintragen
         cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (item_name.replace('_', ' ').capitalize(), user_id))
 
         conn.commit()
@@ -165,15 +156,8 @@ class Pets(commands.Cog):
             await ctx.send(f"❌ In dieser Kategorie (`{kategorie}`) gibt es nichts zu verkaufen!")
             return
 
-        # Punkte gutschreiben
         cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;", (user_id, gesamtwert, gesamtwert))
         
-        # Achievement-Check im Hintergrund anstoßen (falls muellverkaeufer erreicht wurde)
-        try:
-            cur.execute("INSERT INTO user_achievements (user_id, achievement_key) VALUES (%s, 'muellverkaeufer') ON CONFLICT DO NOTHING;", (user_id,))
-        except Exception:
-            pass
-
         conn.commit()
         cur.close()
         conn.close()

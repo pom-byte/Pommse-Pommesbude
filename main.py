@@ -28,7 +28,7 @@ async def on_ready():
 
 async def lade_cogs():
     for filename in os.listdir("."):
-        if filename.endswith(".py") and filename != "main.py":
+        if filename.endswith(".py") and filename != "main.py" and filename != "database.py":
             cog_name = filename[:-3]
             try:
                 await bot.load_extension(cog_name)
