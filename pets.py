@@ -28,10 +28,11 @@ class Pets(commands.Cog):
                 );
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS fischeimer (
+                CREATE TABLE IF NOT EXISTS user_fische (
                     user_id BIGINT,
                     fisch_name TEXT,
-                    wert INT DEFAULT 10
+                    anzahl INT DEFAULT 1,
+                    PRIMARY KEY (user_id, fisch_name)
                 );
             """)
             cur.execute("""
@@ -41,7 +42,6 @@ class Pets(commands.Cog):
                     wert INT DEFAULT 15
                 );
             """)
-            # Behebt den Spaltenfehler direkt beim Start, falls die Tabelle schon existierte
             cur.execute("""
                 ALTER TABLE user_inventory ADD COLUMN IF NOT EXISTS wert INT DEFAULT 15;
             """)
@@ -137,11 +137,25 @@ class Pets(commands.Cog):
 
         kategorie = kategorie.lower()
         if kategorie in ["fish", "fisch", "fischeimer"]:
-            cur.execute("SELECT SUM(wert) FROM fischeimer WHERE user_id = %s;", (user_id,))
-            row = cur.fetchone()
-            if row and row[0]:
-                gesamtwert = row[0]
-                cur.execute("DELETE FROM fischeimer WHERE user_id = %s;", (user_id,))
+            cur.execute("SELECT fisch_name, anzahl FROM user_fische WHERE user_id = %s AND anzahl > 0;", (user_id,))
+            fische = cur.fetchall()
+            
+            if fische:
+                fisch_werte = {
+                    "Alte Socke": 5,
+                    "Kleine Krabbe": 15,
+                    "Frittierter Hering": 30,
+                    "Knusper-Lachs": 60,
+                    "Garnierte Garnele": 100,
+                    "Goldener Knusper-Karpfen": 300
+                }
+                
+                for fisch_name, anzahl in fische:
+                    einzelwert = fisch_werte.get(fisch_name, 10)
+                    gesamtwert += einzelwert * anzahl
+                
+                cur.execute("DELETE FROM user_fische WHERE user_id = %s;", (user_id,))
+
         elif kategorie in ["loot", "inventar", "muell"]:
             cur.execute("SELECT SUM(wert) FROM user_inventory WHERE user_id = %s;", (user_id,))
             row = cur.fetchone()
