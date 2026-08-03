@@ -38,8 +38,8 @@ class Inventar(commands.Cog):
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Loot/Müll auslesen
-        cur.execute("SELECT ctid, item_name, wert FROM user_inventory WHERE user_id = %s;", (user_id,))
+        # Loot/Müll auslesen (Sicherer ohne ctid-Absturz)
+        cur.execute("SELECT item_name, wert FROM user_inventory WHERE user_id = %s;", (user_id,))
         loot_eintraege = cur.fetchall()
 
         # Fische auslesen
@@ -57,9 +57,9 @@ class Inventar(commands.Cog):
         # Loot-Bereich
         if loot_eintraege:
             loot_text = ""
-            for row_id, item_name, wert in loot_eintraege:
+            for index, (item_name, wert) in enumerate(loot_eintraege, start=1):
                 lesbarer_name = item_name.replace("_", " ").capitalize()
-                loot_text += f"• **ID {row_id}**: {lesbarer_name} (*Wert: {wert} 🍟*)\n"
+                loot_text += f"• **#{index}**: {lesbarer_name} (*Wert: {wert} 🍟*)\n"
             embed.add_field(name="🗑️ Müll & Andenken", value=loot_text, inline=False)
         else:
             embed.add_field(name="🗑️ Müll & Andenken", value="Dein Inventar ist leer.", inline=False)
