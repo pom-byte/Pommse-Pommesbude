@@ -48,9 +48,9 @@ class Inventar(commands.Cog):
             )
             items = cur.fetchall()
 
-            # 2. Fischeimer auslesen
+            # 2. Fischeimer auslesen (gruppiert mit Anzahl, analog zum Eimer-Befehl)
             cur.execute(
-                "SELECT fisch_name, wert FROM fischeimer WHERE user_id = %s;",
+                "SELECT fisch_name, COUNT(*), SUM(wert) FROM fischeimer WHERE user_id = %s GROUP BY fisch_name;",
                 (user_id,)
             )
             fische = cur.fetchall()
@@ -84,9 +84,11 @@ class Inventar(commands.Cog):
         else:
             embed.add_field(name="🗑️ Müll & Loot", value="*Dein Inventar ist leer.*", inline=False)
 
-        # Fischeimer anzeigen
+        # Fischeimer anzeigen (mit Anzahl)
         if fische:
-            fisch_text = "\n".join([f"• {f[0]} (*Wert: {f[1]} 🍟*)" for f in fische])
+            fisch_text = ""
+            for fisch_name, anzahl, gesamt_wert in fische:
+                fisch_text += f"• {fisch_name}: **{anzahl}x** (*Gesamtwert: {gesamt_wert} 🍟*)\n"
             embed.add_field(name="🐟 Fischeimer (Verkauf mit !verkaufen fisch)", value=fisch_text, inline=False)
         else:
             embed.add_field(name="🐟 Fischeimer", value="*Dein Fischeimer ist leer.*", inline=False)
