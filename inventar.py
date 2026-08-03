@@ -78,7 +78,7 @@ class Inventar(commands.Cog):
                     gear_text += f"• ID **{item_id}**: {name} (*Wert: {wert} 🍟*)\n"
             
             if trash_text:
-                embed.add_field(name="🗑️ Müll & Andenken (Verkauf mit !pfand <ID>)", value=trash_text, inline=False)
+                embed.add_field(name="🗑️ Müll & Andenken (Einlösen mit !pfand <ID>)", value=trash_text, inline=False)
             if gear_text:
                 embed.add_field(name="🛡️ Pet-Ausstattung", value=gear_text, inline=False)
         else:
@@ -91,7 +91,7 @@ class Inventar(commands.Cog):
         else:
             embed.add_field(name="🐟 Fischeimer", value="*Dein Fischeimer ist leer.*", inline=False)
 
-        embed.set_footer(text="Nutze !pfand <ID> um Müll/Loot einzulösen!")
+        embed.set_footer(text="Nutze !pfand <ID> für Loot oder !verkaufen fisch für den Eimer!")
         await ctx.send(embed=embed)
 
     @commands.command(name="pfand", aliases=["einloesen", "sellid"])
@@ -140,6 +140,47 @@ class Inventar(commands.Cog):
         except Exception as e:
             await ctx.send("❌ Fehler beim Einlösen. Das System streikt.")
             print(f"Fehler bei !pfand: {e}")
+
+    @commands.command(name="verkaufen")
+    async def verkaufen(self, ctx, kategorie: str):
+        user_id = ctx.author.id
+        kategorie = kategorie.lower()
+
+        if kategorie not in ["fish", "fisch", "fischeimer"]:
+            await ctx.send("❌ Bitte gib an, was du verkaufen möchtest: `!verkaufen fisch`")
+            return
+
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute("SELECT SUM(wert) FROM fischeimer WHERE user_id = %s;", (user_id,))
+            row = cur.fetchone()
+            
+            if not row or not row[0]:
+                cur.close()
+                conn.close()
+                await ctx.send("❌ Dein Fischeimer ist leer, es gibt nichts zu verkaufen!")
+                return
+
+            gesamtwert = row[0]
+            
+            # Fische leeren und Punkte gutschreiben
+            cur.execute("DELETE FROM fischeimer WHERE user_id = %s;", (user_id,))
+            cur.execute("""
+                INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) 
+                ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;
+            """, (user_id, gesamtwert, gesamtwert))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            await ctx.send(f"🐟 **Fische verkauft!** {ctx.author.mention} hat seinen Fischeimer geleert und **{gesamtwert} 🍟 Knusper-Punkte** erhalten!")
+
+        except Exception as e:
+            await ctx.send("❌ Fehler beim Fische-Verkauf.")
+            print(f"Fehler bei !verkaufen fisch: {e}")
 
 async def setup(bot):
     await bot.add_cog(Inventar(bot))
