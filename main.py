@@ -1,52 +1,89 @@
-import os
-import asyncio
 import discord
 from discord.ext import commands
-from flask import Flask
-from threading import Thread
-from dotenv import load_dotenv
+from database import get_db_connection
 
-load_dotenv()
+class Inventar(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.init_db()
 
-app = Flask('')
+    def init_db(self):
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_inventory (
+                    user_id BIGINT,
+                    item_name TEXT,
+                    wert INT DEFAULT 15
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_fische (
+                    user_id BIGINT,
+                    fisch_name TEXT,
+                    anzahl INT DEFAULT 1,
+                    PRIMARY KEY (user_id, fisch_name)
+                );
+            """)
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Fehler bei DB-Init in Inventar: {e}")
 
-@app.route('/')
-def home():
-    return "Pommse ist online und frittiert!"
+    @commands.command(name="inventar", aliases=["inv", "Rucksack"])
+    async def inventar(self, ctx):
+        user_id = ctx.author.id
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-# Bot Setup
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
+        # Loot/Müll auslesen
+        cur.execute("SELECT ctid, item_name, wert FROM user_inventory WHERE user_id = %s;", (user_id,))
+        loot_eintraege = cur.fetchall()
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+        # Fische auslesen
+        cur.execute("SELECT fisch_name, anzahl FROM user_fische WHERE user_id = %s AND anzahl > 0;", (user_id,))
+        fische = cur.fetchall()
 
-@bot.event
-async def on_ready():
-    print(f"Eingeloggt als {bot.user} (ID: {bot.user.id})")
-    print("Pommse-Universum ist online in der Cloud! 🍟🚀")
+        cur.close()
+        conn.close()
 
-async def lade_cogs():
-    for filename in os.listdir("."):
-        if filename.endswith(".py") and filename != "main.py" and filename != "database.py":
-            cog_name = filename[:-3]
-            try:
-                await bot.load_extension(cog_name)
-                print(f"Cog erfolgreich geladen: {cog_name}")
-            except Exception as e:
-                print(f"Fehler beim Laden von Cog {cog_name}: {e}")
+        embed = discord.Embed(
+            title=f"🎒 Knuspriges Inventar & Eimer von {ctx.author.name}",
+            color=discord.Color.dark_orange()
+        )
 
-@bot.event
-async def setup_hook():
-    await lade_cogs()
+        # Loot-Bereich
+        if loot_eintraege:
+            loot_text = ""
+            for row_id, item_name, wert in loot_eintraege:
+                lesbarer_name = item_name.replace("_", " ").capitalize()
+                loot_text += f"• **ID {row_id}**: {lesbarer_name} (*Wert: {wert} 🍟*)\n"
+            embed.add_field(name="🗑️ Müll & Andenken", value=loot_text, inline=False)
+        else:
+            embed.add_field(name="🗑️ Müll & Andenken", value="Dein Inventar ist leer.", inline=False)
 
-def run_flask():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+        # Fischeimer-Bereich
+        if fische:
+            fisch_text = ""
+            fisch_emojis = {
+                "Alte Socke": "🧦",
+                "Kleine Krabbe": "🦀",
+                "Frittierter Hering": "🐟",
+                "Knusper-Lachs": "🍣",
+                "Garnierte Garnele": "🦐",
+                "Goldener Knusper-Karpfen": "✨🐠"
+            }
+            for fisch_name, anzahl in fische:
+                emoji = fisch_emojis.get(fisch_name, "🐟")
+                fisch_text += f"• {emoji} **{fisch_name}**: {anzahl}x\n"
+            embed.add_field(name="🪣 Fischeimer", value=fisch_text, inline=False)
+        else:
+            embed.add_field(name="🪣 Fischeimer", value="Dein Fischeimer ist leer.", inline=False)
 
-if __name__ == "__main__":
-    t = Thread(target=run_flask)
-    t.daemon = True
-    t.start()
-    
-    token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
-    bot.run(token)
+        embed.set_footer(text="Nutze !verkaufen loot für Loot oder !verkaufen fisch für den Eimer!")
+        await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(Inventar(bot))
