@@ -20,6 +20,13 @@ class Inventar(commands.Cog):
                     wert INT DEFAULT 15
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS fischeimer (
+                    user_id BIGINT,
+                    fisch_name TEXT,
+                    wert INT DEFAULT 10
+                );
+            """)
             conn.commit()
             cur.close()
             conn.close()
@@ -33,11 +40,21 @@ class Inventar(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+            
+            # 1. D&D-Loot / Müll auslesen
             cur.execute(
                 "SELECT id, item_name, item_typ, wert FROM user_inventar WHERE user_id = %s;",
                 (user_id,)
             )
             items = cur.fetchall()
+
+            # 2. Fischeimer auslesen
+            cur.execute(
+                "SELECT fisch_name, wert FROM fischeimer WHERE user_id = %s;",
+                (user_id,)
+            )
+            fische = cur.fetchall()
+
             cur.close()
             conn.close()
         except Exception as e:
@@ -46,34 +63,39 @@ class Inventar(commands.Cog):
             return
 
         embed = discord.Embed(
-            title=f"🎒 Knuspriges Inventar von {ctx.author.name}",
+            title=f"🎒 Knuspriges Inventar & Eimer von {ctx.author.name}",
             color=discord.Color.gold()
         )
 
-        if not items:
-            embed.description = "Dein Inventar ist leer. Selbst eine Fritte hat mehr Inhalt."
-            embed.add_field(name="Pommses Kommentar", value="*'Vielleicht solltest du mal einen Dungeon betreten statt nur herumzustehen.'*", inline=False)
-        else:
+        # Loot / Müll anzeigen
+        if items:
             trash_text = ""
             gear_text = ""
-            
             for item_id, name, typ, wert in items:
                 if typ == "trash":
-                    trash_text += f"• ID **{item_id}**: {name} (*Wert: {wert} Knusperpunkte*)\n"
+                    trash_text += f"• ID **{item_id}**: {name} (*Wert: {wert} 🍟*)\n"
                 else:
-                    gear_text += f"• ID **{item_id}**: {name} (*Wert: {wert} Knusperpunkte*)\n"
+                    gear_text += f"• ID **{item_id}**: {name} (*Wert: {wert} 🍟*)\n"
             
             if trash_text:
-                embed.add_field(name="🗑️ Müll & Andenken", value=trash_text, inline=False)
+                embed.add_field(name="🗑️ Müll & Andenken (Verkauf mit !pfand <ID>)", value=trash_text, inline=False)
             if gear_text:
                 embed.add_field(name="🛡️ Pet-Ausstattung", value=gear_text, inline=False)
-                
-            embed.add_field(name="Pommses Kommentar", value="*'Ein Haufen Zeug. Zumindest glänzt ein Teil davon.'*", inline=False)
+        else:
+            embed.add_field(name="🗑️ Müll & Loot", value="*Dein Inventar ist leer.*", inline=False)
 
+        # Fischeimer anzeigen
+        if fische:
+            fisch_text = "\n".join([f"• {f[0]} (*Wert: {f[1]} 🍟*)" for f in fische])
+            embed.add_field(name="🐟 Fischeimer (Verkauf mit !verkaufen fisch)", value=fisch_text, inline=False)
+        else:
+            embed.add_field(name="🐟 Fischeimer", value="*Dein Fischeimer ist leer.*", inline=False)
+
+        embed.set_footer(text="Nutze !pfand <ID> um Müll/Loot einzulösen!")
         await ctx.send(embed=embed)
 
-    @commands.command(name="verkaufen_id", aliases=["pfand", "sellid"])
-    async def verkaufen_id(self, ctx, item_id: int):
+    @commands.command(name="pfand", aliases=["einloesen", "sellid"])
+    async def pfand(self, ctx, item_id: int):
         user_id = ctx.author.id
 
         try:
@@ -89,11 +111,12 @@ class Inventar(commands.Cog):
             if not item:
                 cur.close()
                 conn.close()
-                await ctx.send("Dieses Item gehört dir nicht (oder die ID existiert nicht). Nutze `!inventar` für die IDs.")
+                await ctx.send("❌ Dieses Item gehört dir nicht oder die ID existiert nicht. Schau mit `!inventar` nach den richtigen IDs!")
                 return
 
             item_name, item_typ, wert = item
 
+            # Item löschen und Punkte gutschreiben
             cur.execute("DELETE FROM user_inventar WHERE id = %s;", (item_id,))
             cur.execute("""
                 INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) 
@@ -106,7 +129,7 @@ class Inventar(commands.Cog):
 
             embed = discord.Embed(
                 title="💰 Pfandhaus & Recycling",
-                description=f"Du hast **{item_name}** erfolgreich entsorgt und **{wert} Knusperpunkte** erhalten!",
+                description=f"Du hast **{item_name}** erfolgreich abgegeben und **{wert} Knusperpunkte** erhalten!",
                 color=discord.Color.green()
             )
             
@@ -115,8 +138,8 @@ class Inventar(commands.Cog):
             await ctx.send(embed=embed)
 
         except Exception as e:
-            await ctx.send("Fehler beim Verkauf. Das System streikt.")
-            print(f"Fehler bei !verkaufen_id: {e}")
+            await ctx.send("❌ Fehler beim Einlösen. Das System streikt.")
+            print(f"Fehler bei !pfand: {e}")
 
 async def setup(bot):
     await bot.add_cog(Inventar(bot))
