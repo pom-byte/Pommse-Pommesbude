@@ -1,14 +1,30 @@
 import discord
 from discord.ext import commands
-import os
-import psycopg2
-
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
+from database import get_db_connection
 
 class Inventar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.init_db()
+
+    def init_db(self):
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_inventar (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT,
+                    item_name TEXT,
+                    item_typ TEXT DEFAULT 'trash',
+                    wert INT DEFAULT 15
+                );
+            """)
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Fehler bei DB-Init in Inventar: {e}")
 
     @commands.command(name="inventar", aliases=["inv", "tasche"])
     async def inventar(self, ctx):
@@ -86,8 +102,11 @@ class Inventar(commands.Cog):
             # Item aus dem Inventar löschen
             cur.execute("DELETE FROM user_inventar WHERE id = %s;", (item_id,))
             
-            # Hier kannst du später deine Knusperpunkte-Tabelle ansprechen (z.B. Punkte gutschreiben)
-            # Aktuell simulieren wir den Verkauf:
+            # Punkte dem User in user_punkte gutschreiben
+            cur.execute("""
+                INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) 
+                ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;
+            """, (user_id, wert, wert))
             
             conn.commit()
             cur.close()
