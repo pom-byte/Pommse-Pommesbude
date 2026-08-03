@@ -43,5 +43,5 @@ async def on_ready():
 # 3. Starten
 if __name__ == "__main__":
     keep_alive()
-    TOKEN = os.environ.get("DISCORD_TOKEN")
+    TOKEN = os.environ.get("HAUPTBOT_DISCORD_TOKEN")
     bot.run(TOKEN)
