@@ -15,7 +15,8 @@ class Games(commands.Cog):
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_punkte (
                     user_id BIGINT PRIMARY KEY,
-                    punkte INT DEFAULT 100
+                    punkte INT DEFAULT 100,
+                    highscore INT DEFAULT 0
                 );
             """)
             conn.commit()
@@ -31,7 +32,7 @@ class Games(commands.Cog):
             cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
             row = cur.fetchone()
             if not row:
-                cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, 100) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
+                cur.execute("INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, 100, 0) ON CONFLICT (user_id) DO NOTHING;", (user_id,))
                 conn.commit()
                 punkte = 100
             else:
@@ -50,9 +51,13 @@ class Games(commands.Cog):
             cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
             row = cur.fetchone()
             if not row:
-                cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s);", (user_id, 100 + menge))
+                cur.execute("INSERT INTO user_punkte (user_id, punkte, highscore) VALUES (%s, %s, 0);", (user_id, 100 + menge))
             else:
-                cur.execute("UPDATE user_punkte SET punkte = punkte + %s WHERE user_id = %s;", (menge, user_id))
+                # Highscore nur erhöhen, wenn ein positiver Gewinn erzielt wurde
+                if menge > 0:
+                    cur.execute("UPDATE user_punkte SET punkte = punkte + %s, highscore = highscore + %s WHERE user_id = %s;", (menge, menge, user_id))
+                else:
+                    cur.execute("UPDATE user_punkte SET punkte = punkte + %s WHERE user_id = %s;", (menge, user_id))
             conn.commit()
             cur.close()
             conn.close()

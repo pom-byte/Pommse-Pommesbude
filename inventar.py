@@ -48,7 +48,7 @@ class Inventar(commands.Cog):
             )
             items = cur.fetchall()
 
-            # 2. Fischeimer auslesen (gruppiert mit Anzahl, analog zum Eimer-Befehl)
+            # 2. Fischeimer auslesen (gruppiert mit Anzahl)
             cur.execute(
                 "SELECT fisch_name, COUNT(*), SUM(wert) FROM fischeimer WHERE user_id = %s GROUP BY fisch_name;",
                 (user_id,)
