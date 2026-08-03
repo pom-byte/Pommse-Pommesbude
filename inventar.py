@@ -72,19 +72,14 @@ class Inventar(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="verkaufen", aliases=["pfand", "shop"])
-    async def verkaufen(self, ctx, item_id: int = None):
+    @commands.command(name="verkaufen_id", aliases=["pfand", "sellid"])
+    async def verkaufen_id(self, ctx, item_id: int):
         user_id = ctx.author.id
-
-        if item_id is None:
-            await ctx.send("Sag mir schon, *was* du verkaufen willst. Schreib `!verkaufen [Item-ID]`. Nutzen kannst du `!inventar`, um die IDs zu sehen.")
-            return
 
         try:
             conn = get_db_connection()
             cur = conn.cursor()
             
-            # Prüfen, ob das Item dem User gehört
             cur.execute(
                 "SELECT item_name, item_typ, wert FROM user_inventar WHERE id = %s AND user_id = %s;",
                 (item_id, user_id)
@@ -94,15 +89,12 @@ class Inventar(commands.Cog):
             if not item:
                 cur.close()
                 conn.close()
-                await ctx.send("Dieses Item gehört dir nicht (oder es existiert nicht). Netter Versuch.")
+                await ctx.send("Dieses Item gehört dir nicht (oder die ID existiert nicht). Nutze `!inventar` für die IDs.")
                 return
 
             item_name, item_typ, wert = item
 
-            # Item aus dem Inventar löschen
             cur.execute("DELETE FROM user_inventar WHERE id = %s;", (item_id,))
-            
-            # Punkte dem User in user_punkte gutschreiben
             cur.execute("""
                 INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) 
                 ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;
@@ -118,17 +110,13 @@ class Inventar(commands.Cog):
                 color=discord.Color.green()
             )
             
-            if item_typ == "trash":
-                kommentar = "Du verkaufst also deinen Müll? Wirtschaftlich fragwürdig, aber wer bin ich, deinen Reichtum zu behindern."
-            else:
-                kommentar = "Du verkaufst echtes Pet-Gear? Mutig. Oder einfach kurzsichtig."
-                
+            kommentar = "Du verkaufst also deinen Müll? Wirtschaftlich fragwürdig." if item_typ == "trash" else "Du verkaufst echtes Pet-Gear? Mutig."
             embed.add_field(name="Pommses Kommentar", value=f"*{kommentar}*", inline=False)
             await ctx.send(embed=embed)
 
         except Exception as e:
             await ctx.send("Fehler beim Verkauf. Das System streikt.")
-            print(f"Fehler bei !verkaufen: {e}")
+            print(f"Fehler bei !verkaufen_id: {e}")
 
 async def setup(bot):
     await bot.add_cog(Inventar(bot))
