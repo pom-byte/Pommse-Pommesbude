@@ -1,47 +1,52 @@
 import os
-from threading import Thread
-from flask import Flask
+import asyncio
 import discord
 from discord.ext import commands
+from flask import Flask
+from threading import Thread
+from dotenv import load_dotenv
 
-# 1. Flask-Server für Render (damit der Web Service aktiv bleibt)
+load_dotenv()
+
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot ist online und knusprig!"
+    return "Pommse ist online und frittiert!"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-def keep_alive():
-    t = Thread(target=run_flask)
-    t.start()
-
-# 2. Discord Bot Setup
+# Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"Eingeloggt als {bot.user}!")
-    # Cogs laden
-    try:
-        await bot.load_extension("pets")
-        print("Cog 'pets' erfolgreich geladen.")
-    except Exception as e:
-        print(f"Fehler beim Laden von 'pets': {e}")
-        
-    try:
-        await bot.load_extension("inventar")
-        print("Cog 'inventar' erfolgreich geladen.")
-    except Exception as e:
-        print(f"Fehler beim Laden von 'inventar': {e}")
+    print(f"Eingeloggt als {bot.user} (ID: {bot.user.id})")
+    print("Pommse-Universum ist online in der Cloud! 🍟🚀")
 
-# 3. Starten
+async def lade_cogs():
+    for filename in os.listdir("."):
+        if filename.endswith(".py") and filename != "main.py" and filename != "database.py":
+            cog_name = filename[:-3]
+            try:
+                await bot.load_extension(cog_name)
+                print(f"Cog erfolgreich geladen: {cog_name}")
+            except Exception as e:
+                print(f"Fehler beim Laden von Cog {cog_name}: {e}")
+
+@bot.event
+async def setup_hook():
+    await lade_cogs()
+
+def run_flask():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
 if __name__ == "__main__":
-    keep_alive()
-    TOKEN = os.environ.get("HAUPTBOT_DISCORD_TOKEN")
-    bot.run(TOKEN)
+    t = Thread(target=run_flask)
+    t.daemon = True
+    t.start()
+    
+    token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
+    bot.run(token)
