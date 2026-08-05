@@ -283,39 +283,8 @@ class Pets(commands.Cog):
 
         await ctx.send(f"😋 **Mjam!** Pet für {futter_kosten} 🍟 gefüttert. Neuer Hunger: **{nuevo_hunger}/100**! 🍟✨")
 
-class Inventar(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.init_db()
-
-    def init_db(self):
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_inventory (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT,
-                    item_name TEXT,
-                    item_typ TEXT DEFAULT 'trash',
-                    wert INT DEFAULT 15
-                );
-            """)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_fische (
-                    user_id BIGINT,
-                    fisch_name TEXT,
-                    anzahl INT DEFAULT 1,
-                    PRIMARY KEY (user_id, fisch_name)
-                );
-            """)
-            conn.commit()
-            cur.close()
-            conn.close()
-        except Exception as e:
-            print(f"Fehler bei DB-Init in Inventar: {e}")
-
-    @commands.command(name="inventar", aliases=["inv", "Rucksack"])
+    # Zentraler Inventar-Befehl für Loot & Fische
+    @commands.command(name="inventar", aliases=["inv", "Rucksack", "fischeimer"])
     async def inventar(self, ctx):
         user_id = ctx.author.id
         conn = get_db_connection()
@@ -366,4 +335,3 @@ class Inventar(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Pets(bot))
-    await bot.add_cog(Inventar(bot))
