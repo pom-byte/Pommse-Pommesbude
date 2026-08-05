@@ -13,8 +13,6 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            
-            # Tabellen für Pets und Angeln sicherstellen
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_pets (
                     user_id BIGINT PRIMARY KEY,
@@ -119,7 +117,7 @@ class Pets(commands.Cog):
         embed.add_field(name="Level", value=f"⭐ Stufe {level}", inline=True)
         embed.add_field(name="Glanz & Ausstattung", value=f"✨ {accessoires}", inline=True)
         embed.add_field(name="Pommses Liebeserklärung", value=kommentar.format(pet_name), inline=False)
-        embed.set_footer(text="Tippe !fuettern um dein Pet zu versorgen oder !angeln für den Fischeimer!")
+        embed.set_footer(text="Tippe !fuettern um dein Pet zu versorgen oder !menue für den Shop!")
         
         await ctx.send(embed=embed)
 
@@ -159,14 +157,12 @@ class Pets(commands.Cog):
     async def angeln(self, ctx):
         user_id = ctx.author.id
         
-        # Zufälligen Fisch basierend auf Gewichten auswählen
         namen, gewichte = zip(*self.FISCHE_LISTE)
         geangelt = random.choices(namen, weights=gewichte, k=1)[0]
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # In den Fischeimer (user_fische) abspeichern
         cur.execute("""
             INSERT INTO user_fische (user_id, fisch_name, anzahl) 
             VALUES (%s, %s, 1) 
