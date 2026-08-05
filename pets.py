@@ -13,6 +13,8 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+            
+            # Tabellen für Pets und Angeln sicherstellen
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_pets (
                     user_id BIGINT PRIMARY KEY,
@@ -27,12 +29,6 @@ class Pets(commands.Cog):
                 ALTER TABLE user_pets ADD COLUMN IF NOT EXISTS last_fed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_punkte (
-                    user_id BIGINT PRIMARY KEY,
-                    punkte INT DEFAULT 100
-                );
-            """)
-            cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_fische (
                     user_id BIGINT,
                     fisch_name TEXT,
@@ -40,151 +36,25 @@ class Pets(commands.Cog):
                     PRIMARY KEY (user_id, fisch_name)
                 );
             """)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_inventory (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT,
-                    item_name TEXT,
-                    item_typ TEXT DEFAULT 'trash',
-                    wert INT DEFAULT 15
-                );
-            """)
             conn.commit()
             cur.close()
             conn.close()
         except Exception as e:
-            print(f"Fehler bei DB-Init in Pets: {e}")
+            print(f"Fehler bei DB-Init in Pets/Angeln: {e}")
 
     ZUFALLS_NAMEN = [
         "Knuffi die Fritte", "Sir Crispy Crisp", "Madame Mayo", 
         "Ketchup-King", "Salzige Susi", "Goldgelb der Zerstörer"
     ]
 
-    SHOP_ANGEBOT = {
-        "sonnenbrille": {"preis": 500, "typ": "Accessoire", "desc": "Cooler Look für das Pet 🕶️"},
-        "ketchup_huetchen": {"preis": 750, "typ": "Accessoire", "desc": "Ein Hütchen aus echtem Ketchup 🍅"},
-        "goldene_kruste": {"preis": 2000, "typ": "Upgrade", "desc": "Vergoldet deine Fritte ✨"},
-        "spezialfutter": {"preis": 80, "typ": "Futter", "desc": "Gibt deinem Pet direkt +50 Hunger zurück! 🍟"}
-    }
-
-    @commands.command(name="menue", aliases=["shop", "speisekarte"])
-    async def menue(self, ctx):
-        embed = discord.Embed(
-            title="🍟 Pommse' Fritten- & Accessoire-Menü",
-            description="Kaufe Upgrades oder verkaufe deinen Loot/Fisch mit `!verkaufen fisch` bzw. `!verkaufen loot`!",
-            color=discord.Color.gold()
-        )
-        for item, daten in self.SHOP_ANGEBOT.items():
-            embed.add_field(
-                name=f"{item.replace('_', ' ').capitalize()} ({daten['preis']} 🍟)",
-                value=f"*{daten['desc']}*",
-                inline=False
-            )
-        embed.set_footer(text="Tippe !kaufen <name> zum Bestellen!")
-        await ctx.send(embed=embed)
-
-    @commands.command(name="kaufen")
-    async def kaufen(self, ctx, *, item_name: str):
-        item_name = item_name.lower().replace(" ", "_")
-        if item_name not in self.SHOP_ANGEBOT:
-            await ctx.send("❌ Dieses Item steht nicht auf der Speisekarte! Tippe `!menue`.")
-            return
-
-        preis = self.SHOP_ANGEBOT[item_name]["preis"]
-        user_id = ctx.author.id
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("SELECT punkte FROM user_punkte WHERE user_id = %s;", (user_id,))
-        row = cur.fetchone()
-        userpunkte = row[0] if row else 100
-
-        if userpunkte < preis:
-            cur.close()
-            conn.close()
-            await ctx.send(f"❌ Du hast nicht genug Knusper-Punkte! Du brauchst **{preis} 🍟**, hast aber nur **{userpunkte} 🍟**.")
-            return
-
-        if item_name == "spezialfutter":
-            cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
-            cur.execute("UPDATE user_pets SET hunger = LEAST(100, hunger + 50), last_fed = CURRENT_TIMESTAMP WHERE user_id = %s;", (user_id,))
-            conn.commit()
-            cur.close()
-            conn.close()
-            await ctx.send(f"🍟 **Lecker!** {ctx.author.mention} hat Spezialfutter gekauft und sein Pet gestärkt!")
-            return
-
-        cur.execute("SELECT * FROM user_inventory WHERE user_id = %s AND item_name = %s;", (user_id, item_name))
-        if cur.fetchone():
-            cur.close()
-            conn.close()
-            await ctx.send(f"⚠️ Du hast dieses Accessoire bereits gekauft!")
-            return
-
-        cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
-        cur.execute("INSERT INTO user_inventory (user_id, item_name, item_typ, wert) VALUES (%s, %s, %s, %s);", (user_id, item_name, "accessoire", preis))
-        cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (item_name.replace('_', ' ').capitalize(), user_id))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        await ctx.send(f"🎉 **Erfolgreich gekauft!** {ctx.author.mention} trägt jetzt **{item_name.replace('_', ' ').capitalize()}**!")
-
-    @commands.command(name="verkaufen")
-    async def verkaufen(self, ctx, kategorie: str):
-        user_id = ctx.author.id
-        conn = get_db_connection()
-        cur = conn.cursor()
-        gesamtwert = 0
-
-        kategorie = kategorie.lower()
-        if kategorie in ["fish", "fisch", "fischeimer"]:
-            cur.execute("SELECT fisch_name, anzahl FROM user_fische WHERE user_id = %s AND anzahl > 0;", (user_id,))
-            fische = cur.fetchall()
-            
-            if fische:
-                fisch_werte = {
-                    "Alte Socke": 5,
-                    "Kleine Krabbe": 15,
-                    "Frittierter Hering": 30,
-                    "Knusper-Lachs": 60,
-                    "Garnierte Garnele": 100,
-                    "Goldener Knusper-Karpfen": 300
-                }
-                
-                for fisch_name, anzahl in fische:
-                    einzelwert = fisch_werte.get(fisch_name, 10)
-                    gesamtwert += int(einzelwert) * anzahl
-                
-                cur.execute("DELETE FROM user_fische WHERE user_id = %s;", (user_id,))
-
-        elif kategorie in ["loot", "inventar", "muell"]:
-            cur.execute("SELECT SUM(wert) FROM user_inventory WHERE user_id = %s;", (user_id,))
-            row = cur.fetchone()
-            if row and row[0]:
-                gesamtwert = row[0]
-                cur.execute("DELETE FROM user_inventory WHERE user_id = %s;", (user_id,))
-        else:
-            cur.close()
-            conn.close()
-            await ctx.send("❌ Bitte wähle aus, was du verkaufen möchtest: `!verkaufen fisch` oder `!verkaufen loot`.")
-            return
-
-        if gesamtwert <= 0:
-            cur.close()
-            conn.close()
-            await ctx.send(f"❌ In dieser Kategorie (`{kategorie}`) gibt es nichts zu verkaufen!")
-            return
-
-        cur.execute("INSERT INTO user_punkte (user_id, punkte) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET punkte = user_punkte.punkte + %s;", (user_id, gesamtwert, gesamtwert))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        await ctx.send(f"💰 **Erfolgreich verscherbelt!** {ctx.author.mention} hat seinen `{kategorie}` für **{gesamtwert} 🍟** Knusper-Punkte verkauft!")
+    FISCHE_LISTE = [
+        ("Alte Socke", 40),
+        ("Kleine Krabbe", 30),
+        ("Frittierter Hering", 15),
+        ("Knusper-Lachs", 10),
+        ("Garnierte Garnele", 4),
+        ("Goldener Knusper-Karpfen", 1)
+    ]
 
     @commands.command(name="pet", aliases=["knusperpet"])
     async def pet(self, ctx):
@@ -249,7 +119,7 @@ class Pets(commands.Cog):
         embed.add_field(name="Level", value=f"⭐ Stufe {level}", inline=True)
         embed.add_field(name="Glanz & Ausstattung", value=f"✨ {accessoires}", inline=True)
         embed.add_field(name="Pommses Liebeserklärung", value=kommentar.format(pet_name), inline=False)
-        embed.set_footer(text="Tippe !fuettern um dein Pet zu versorgen oder !menue für den Shop!")
+        embed.set_footer(text="Tippe !fuettern um dein Pet zu versorgen oder !angeln für den Fischeimer!")
         
         await ctx.send(embed=embed)
 
@@ -285,54 +155,40 @@ class Pets(commands.Cog):
 
         await ctx.send(f"😋 **Mjam!** Pet für {futter_kosten} 🍟 gefüttert. Neuer Hunger: **{nuevo_hunger}/100**! 🍟✨")
 
-    @commands.command(name="inventar", aliases=["inv", "rucksack", "fischeimer"])
-    async def inventar(self, ctx):
+    @commands.command(name="angeln", aliases=["fish", "catch"])
+    async def angeln(self, ctx):
         user_id = ctx.author.id
+        
+        # Zufälligen Fisch basierend auf Gewichten auswählen
+        namen, gewichte = zip(*self.FISCHE_LISTE)
+        geangelt = random.choices(namen, weights=gewichte, k=1)[0]
+
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT item_name, wert FROM user_inventory WHERE user_id = %s;", (user_id,))
-        loot_eintraege = cur.fetchall()
+        # In den Fischeimer (user_fische) abspeichern
+        cur.execute("""
+            INSERT INTO user_fische (user_id, fisch_name, anzahl) 
+            VALUES (%s, %s, 1) 
+            ON CONFLICT (user_id, fisch_name) 
+            DO UPDATE SET anzahl = user_fische.anzahl + 1;
+        """, (user_id, geangelt))
 
-        cur.execute("SELECT fisch_name, anzahl FROM user_fische WHERE user_id = %s AND anzahl > 0;", (user_id,))
-        fische = cur.fetchall()
-
+        conn.commit()
         cur.close()
         conn.close()
 
-        embed = discord.Embed(
-            title=f"🎒 Knuspriges Inventar & Eimer von {ctx.author.name}",
-            color=discord.Color.dark_orange()
-        )
+        fisch_emojis = {
+            "Alte Socke": "🧦",
+            "Kleine Krabbe": "🦀",
+            "Frittierter Hering": "🐟",
+            "Knusper-Lachs": "🍣",
+            "Garnierte Garnele": "🦐",
+            "Goldener Knusper-Karpfen": "✨🐠"
+        }
+        emoji = fisch_emojis.get(geangelt, "🐟")
 
-        if loot_eintraege:
-            loot_text = ""
-            for index, (item_name, wert) in enumerate(loot_eintraege, start=1):
-                lesbarer_name = item_name.replace("_", " ").capitalize()
-                loot_text += f"• **#{index}**: {lesbarer_name} (*Wert: {wert} 🍟*)\n"
-            embed.add_field(name="🗑️ Müll, Loot & Ausrüstung", value=loot_text, inline=False)
-        else:
-            embed.add_field(name="🗑️ Müll, Loot & Ausrüstung", value="Dein Inventar ist leer.", inline=False)
-
-        if fische:
-            fisch_text = ""
-            fisch_emojis = {
-                "Alte Socke": "🧦",
-                "Kleine Krabbe": "🦀",
-                "Frittierter Hering": "🐟",
-                "Knusper-Lachs": "🍣",
-                "Garnierte Garnele": "🦐",
-                "Goldener Knusper-Karpfen": "✨🐠"
-            }
-            for fisch_name, anzahl in fische:
-                emoji = fisch_emojis.get(fisch_name, "🐟")
-                fisch_text += f"• {emoji} **{fisch_name}**: {anzahl}x\n"
-            embed.add_field(name="🪣 Fischeimer", value=fisch_text, inline=False)
-        else:
-            embed.add_field(name="🪣 Fischeimer", value="Dein Fischeimer ist leer.", inline=False)
-
-        embed.set_footer(text="Nutze !verkaufen loot für Loot oder !verkaufen fisch für den Eimer!")
-        await ctx.send(embed=embed)
+        await ctx.send(f"🎣 {ctx.author.mention} wirft die Angel aus und zieht einen Fang an Land: {emoji} **{geangelt}**! *(Schau mit `!inventar` in deinen Eimer)*")
 
 async def setup(bot):
     await bot.add_cog(Pets(bot))
