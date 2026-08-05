@@ -13,6 +13,8 @@ class Pets(commands.Cog):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
+            
+            # Tabellen erstellen falls nicht vorhanden
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_pets (
                     user_id BIGINT PRIMARY KEY,
@@ -209,7 +211,9 @@ class Pets(commands.Cog):
         else:
             pet_name, old_hunger, level, accessoires, last_fed = row[0], row[1], row[2], row[3], row[4]
             
-            if last_fed.tzinfo is None:
+            if last_fed is None:
+                last_fed = now
+            elif last_fed.tzinfo is None:
                 last_fed = last_fed.replace(tzinfo=timezone.utc)
             
             vergangene_stunden = int((now - last_fed).total_seconds() // 3600)
@@ -218,9 +222,9 @@ class Pets(commands.Cog):
                 hunger = max(0, old_hunger - (vergangene_stunden * 2))
                 cur.execute("""
                     UPDATE user_pets 
-                    SET hunger = %s, last_fed = last_fed + make_interval(hours => %s) 
+                    SET hunger = %s, last_fed = CURRENT_TIMESTAMP 
                     WHERE user_id = %s;
-                """, (hunger, vergangene_stunden, user_id))
+                """, (hunger, user_id))
                 conn.commit()
             else:
                 hunger = old_hunger
@@ -283,7 +287,7 @@ class Pets(commands.Cog):
 
         await ctx.send(f"😋 **Mjam!** Pet für {futter_kosten} 🍟 gefüttert. Neuer Hunger: **{nuevo_hunger}/100**! 🍟✨")
 
-    @commands.command(name="inventar", aliases=["inv", "Rucksack", "fischeimer"])
+    @commands.command(name="inventar", aliases=["inv", "rucksack", "fischeimer"])
     async def inventar(self, ctx):
         user_id = ctx.author.id
         conn = get_db_connection()
