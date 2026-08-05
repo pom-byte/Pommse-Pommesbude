@@ -23,7 +23,6 @@ class Pets(commands.Cog):
                     last_fed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-            # Falls die Spalte 'last_fed' bei älteren Datenbanken noch fehlt, fügen wir sie sicherheitshalber hinzu:
             cur.execute("""
                 ALTER TABLE user_pets ADD COLUMN IF NOT EXISTS last_fed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
             """)
@@ -43,8 +42,10 @@ class Pets(commands.Cog):
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_inventory (
+                    id SERIAL PRIMARY KEY,
                     user_id BIGINT,
                     item_name TEXT,
+                    item_typ TEXT DEFAULT 'trash',
                     wert INT DEFAULT 15
                 );
             """)
@@ -122,7 +123,7 @@ class Pets(commands.Cog):
             return
 
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
-        cur.execute("INSERT INTO user_inventory (user_id, item_name, wert) VALUES (%s, %s, %s);", (user_id, item_name, preis))
+        cur.execute("INSERT INTO user_inventory (user_id, item_name, item_typ, wert) VALUES (%s, %s, %s, %s);", (user_id, item_name, "accessoire", preis))
         cur.execute("UPDATE user_pets SET accessoires = %s WHERE user_id = %s;", (item_name.replace('_', ' ').capitalize(), user_id))
 
         conn.commit()
@@ -208,19 +209,13 @@ class Pets(commands.Cog):
         else:
             pet_name, old_hunger, level, accessoires, last_fed = row[0], row[1], row[2], row[3], row[4]
             
-            # Zeitzonen-Sicherheit für Python-Vergleich
             if last_fed.tzinfo is None:
                 last_fed = last_fed.replace(tzinfo=timezone.utc)
             
-            # Berechne vergangene Stunden seit dem letzten Füttern
             vergangene_stunden = int((now - last_fed).total_seconds() // 3600)
             
             if vergangene_stunden > 0:
-                # Pro Stunde 2 Hungerpunkte Abzug
                 hunger = max(0, old_hunger - (vergangene_stunden * 2))
-                
-                # Aktualisiere den neuen Hungerwert und setze den Zeitstempel um die verstrichenen Stunden fort, 
-                # damit die Zeit linear weiterzählt.
                 cur.execute("""
                     UPDATE user_pets 
                     SET hunger = %s, last_fed = last_fed + make_interval(hours => %s) 
@@ -233,7 +228,6 @@ class Pets(commands.Cog):
         cur.close()
         conn.close()
 
-        # Liebevolle Status- und Stimmungs-Texte je nach Hunger
         if hunger > 75:
             status_text = "Pappsatt & glücklich 🥰"
             kommentar = "*{0} schaut dich mit großen, zufriedenen Kulleraugen an und knuspert leise vor sich hin.*"
@@ -241,7 +235,7 @@ class Pets(commands.Cog):
             status_text = "Mäßig knusprig 🙂"
             kommentar = "*{0} fängt an leicht zu bröseln. Ein kleiner Snack wäre bald mal wieder nett!*"
         elif hunger > 15:
-            status_text = "Hst Hunger! 🥺"
+            status_text = "Hat Hunger! 🥺"
             kommentar = "*{0} zieht einen Schmollmund. Der Magen knurrt lauter als die Friteuse!*"
         else:
             status_text = "⚠️ AM VERHUNGERN!"
@@ -300,8 +294,10 @@ class Inventar(commands.Cog):
             cur = conn.cursor()
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_inventory (
+                    id SERIAL PRIMARY KEY,
                     user_id BIGINT,
                     item_name TEXT,
+                    item_typ TEXT DEFAULT 'trash',
                     wert INT DEFAULT 15
                 );
             """)
@@ -344,9 +340,9 @@ class Inventar(commands.Cog):
             for index, (item_name, wert) in enumerate(loot_eintraege, start=1):
                 lesbarer_name = item_name.replace("_", " ").capitalize()
                 loot_text += f"• **#{index}**: {lesbarer_name} (*Wert: {wert} 🍟*)\n"
-            embed.add_field(name="🗑️ Müll & Andenken", value=loot_text, inline=False)
+            embed.add_field(name="🗑️ Müll, Loot & Ausrüstung", value=loot_text, inline=False)
         else:
-            embed.add_field(name="🗑️ Müll & Andenken", value="Dein Inventar ist leer.", inline=False)
+            embed.add_field(name="🗑️ Müll, Loot & Ausrüstung", value="Dein Inventar ist leer.", inline=False)
 
         if fische:
             fisch_text = ""
