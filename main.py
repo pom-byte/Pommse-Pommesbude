@@ -4,7 +4,7 @@ from flask import Flask
 import discord
 from discord.ext import commands
 
-# 1. Flask-Server für Render (damit der Web Service aktiv bleibt)
+# 1. Flask-Server für Render
 app = Flask('')
 
 @app.route('/')
@@ -29,15 +29,15 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f"Eingeloggt als {bot.user}!")
     
-    # Alle Cogs sauber nacheinander laden
-    cogs_liste = ["pets", "inventar", "dungeon", "games"]
-    
-    for cog in cogs_liste:
-        try:
-            await bot.load_extension(cog)
-            print(f"Cog '{cog}' erfolgreich geladen.")
-        except Exception as e:
-            print(f"Fehler beim Laden von '{cog}': {e}")
+    # Automatisches Laden aller Cogs aus dem Ordner
+    for filename in os.listdir("."):
+        if filename.endswith(".py") and filename not in ["main.py", "database.py"]:
+            cog_name = filename[:-3]
+            try:
+                await bot.load_extension(cog_name)
+                print(f"Cog '{cog_name}' erfolgreich geladen.")
+            except Exception as e:
+                print(f"Fehler beim Laden von '{cog_name}': {e}")
 
 # 3. Starten
 if __name__ == "__main__":
