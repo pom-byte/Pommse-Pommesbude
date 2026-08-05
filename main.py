@@ -29,18 +29,23 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f"Eingeloggt als {bot.user}!")
     
-    # Automatisches Laden aller Cogs aus dem Ordner
+    # Automatisches Laden aller Cogs im Hauptverzeichnis
     for filename in os.listdir("."):
         if filename.endswith(".py") and filename not in ["main.py", "database.py"]:
             cog_name = filename[:-3]
-            try:
-                await bot.load_extension(cog_name)
-                print(f"Cog '{cog_name}' erfolgreich geladen.")
-            except Exception as e:
-                print(f"Fehler beim Laden von '{cog_name}': {e}")
+            # Nur laden, wenn es nicht schon geladen ist
+            if cog_name not in bot.extensions:
+                try:
+                    await bot.load_extension(cog_name)
+                    print(f"✅ Cog '{cog_name}' erfolgreich geladen.")
+                except Exception as e:
+                    print(f"❌ Fehler beim Laden von '{cog_name}': {e}")
 
 # 3. Starten
 if __name__ == "__main__":
     keep_alive()
     TOKEN = os.environ.get("HAUPTBOT_DISCORD_TOKEN")
-    bot.run(TOKEN)
+    if not TOKEN:
+        print("❌ FEHLER: Kein Token gefunden! Überprüfe die Umgebungsvariable 'HAUPTBOT_DISCORD_TOKEN'.")
+    else:
+        bot.run(TOKEN)
