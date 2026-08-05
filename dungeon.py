@@ -27,7 +27,7 @@ class Dungeon(commands.Cog):
         except Exception as e:
             print(f"Fehler bei DB-Init in Dungeon: {e}")
 
-    @commands.command(name="abenteuer", aliases=["dungeon", "loot"])
+    @commands.command(name="abenteuer", aliases=["dungeon"])
     async def abenteuer(self, ctx):
         user_id = ctx.author.id
         wurf = random.randint(1, 20)
@@ -40,6 +40,12 @@ class Dungeon(commands.Cog):
             ("Eine einzelne, laue Pommes vom Vortag", 4)
         ]
         
+        common_loot = [
+            ("Knuspriger Snack-Rest", 10),
+            ("Gefetteter Dungeon-Krümel", 15),
+            ("Mini-Ketchup-Tütchen", 20)
+        ]
+
         pet_gear_items = [
             ("Ritterhelm aus Alufolie", 50),
             ("Flammenschwert-Zahnstocher", 75),
@@ -68,7 +74,10 @@ class Dungeon(commands.Cog):
             embed.add_field(name="Pommses Kommentar", value="*'Mehr Müll für deine Sammlung. Ich bin tief beeindruckt.'*", inline=False)
 
         elif 10 <= wurf <= 18:
-            embed.description = "Du hast den Raum gesäubert und ein paar Knusper-Reste eingesammelt!"
+            item_name, item_wert = random.choice(common_loot)
+            self.addItemToDb(user_id, item_name, "loot", item_wert)
+
+            embed.description = f"Du hast den Raum gesäubert und Beute eingesammelt: **{item_name}**!"
             embed.color = discord.Color.blue()
             embed.add_field(name="Pommses Kommentar", value="*'Das war überraschend kompetent. Vergiss nicht zu atmen.'*", inline=False)
 
@@ -80,6 +89,7 @@ class Dungeon(commands.Cog):
             embed.color = discord.Color.gold()
             embed.add_field(name="Pommses Kommentar", value="*'Ich werde das nicht oft sagen: Respekt. Dein Pet sieht fast so furchteinflößend aus wie ich.'*", inline=False)
 
+        embed.set_footer(text="Schau mit !inventar in deinen Rucksack!")
         await ctx.send(embed=embed)
 
     def addItemToDb(self, user_id, item_name, item_typ, wert):
