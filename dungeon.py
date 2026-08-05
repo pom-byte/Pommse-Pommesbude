@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
-import os
 import random
+import os
 import psycopg2
 
 def get_db_connection():
@@ -17,7 +17,7 @@ class Dungeon(commands.Cog):
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_inventar (
+                CREATE TABLE IF NOT EXISTS user_inventory (
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT,
                     item_name TEXT,
@@ -109,7 +109,7 @@ class Dungeon(commands.Cog):
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute(
-                "INSERT INTO user_inventar (user_id, item_name, item_typ, wert) VALUES (%s, %s, %s, %s);",
+                "INSERT INTO user_inventory (user_id, item_name, item_typ, wert) VALUES (%s, %s, %s, %s);",
                 (user_id, item_name, item_typ, wert)
             )
             conn.commit()
