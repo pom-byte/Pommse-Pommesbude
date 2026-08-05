@@ -1,52 +1,46 @@
 import os
-import asyncio
+from threading import Thread
+from flask import Flask
 import discord
 from discord.ext import commands
-from flask import Flask
-from threading import Thread
-from dotenv import load_dotenv
 
-load_dotenv()
-
+# 1. Flask-Server für Render (damit der Web Service aktiv bleibt)
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Pommse ist online und frittiert!"
+    return "Bot ist online und knusprig!"
 
-# Bot Setup
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.daemon = True
+    t.start()
+
+# 2. Discord Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"Eingeloggt als {bot.user} (ID: {bot.user.id})")
-    print("Pommse-Universum ist online in der Cloud! 🍟🚀")
-
-async def lade_cogs():
-    for filename in os.listdir("."):
-        if filename.endswith(".py") and filename != "main.py" and filename != "database.py":
-            cog_name = filename[:-3]
-            try:
-                await bot.load_extension(cog_name)
-                print(f"Cog erfolgreich geladen: {cog_name}")
-            except Exception as e:
-                print(f"Fehler beim Laden von Cog {cog_name}: {e}")
-
-@bot.event
-async def setup_hook():
-    await lade_cogs()
-
-def run_flask():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
-
-if __name__ == "__main__":
-    t = Thread(target=run_flask)
-    t.daemon = True
-    t.start()
+    print(f"Eingeloggt als {bot.user}!")
     
-    token = os.getenv("HAUPTBOT_DISCORD_TOKEN")
-    bot.run(token)
+    # Alle Cogs sauber nacheinander laden
+    cogs_liste = ["pets", "inventar", "dungeon", "games"]
+    
+    for cog in cogs_liste:
+        try:
+            await bot.load_extension(cog)
+            print(f"Cog '{cog}' erfolgreich geladen.")
+        except Exception as e:
+            print(f"Fehler beim Laden von '{cog}': {e}")
+
+# 3. Starten
+if __name__ == "__main__":
+    keep_alive()
+    TOKEN = os.environ.get("HAUPTBOT_DISCORD_TOKEN")
+    bot.run(TOKEN)
