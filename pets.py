@@ -283,7 +283,6 @@ class Pets(commands.Cog):
 
         await ctx.send(f"😋 **Mjam!** Pet für {futter_kosten} 🍟 gefüttert. Neuer Hunger: **{nuevo_hunger}/100**! 🍟✨")
 
-    # Zentraler Inventar-Befehl für Loot & Fische
     @commands.command(name="inventar", aliases=["inv", "Rucksack", "fischeimer"])
     async def inventar(self, ctx):
         user_id = ctx.author.id

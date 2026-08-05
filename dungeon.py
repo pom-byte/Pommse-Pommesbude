@@ -1,11 +1,7 @@
 import discord
 from discord.ext import commands
 import random
-import os
-import psycopg2
-
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
+from database import get_db_connection
 
 class Dungeon(commands.Cog):
     def __init__(self, bot):
@@ -21,7 +17,7 @@ class Dungeon(commands.Cog):
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT,
                     item_name TEXT,
-                    item_typ TEXT, -- 'trash' oder 'pet_gear'
+                    item_typ TEXT,
                     wert INT DEFAULT 0
                 );
             """)
@@ -34,11 +30,8 @@ class Dungeon(commands.Cog):
     @commands.command(name="abenteuer", aliases=["dungeon", "loot"])
     async def abenteuer(self, ctx):
         user_id = ctx.author.id
-        
-        # Klassischer d20 Würfelwurf (1 bis 20)
         wurf = random.randint(1, 20)
         
-        # Definition von Loot-Pools
         trash_items = [
             ("Ranzige Socken", 2),
             ("Feuchter Pappbecher", 1),
@@ -59,9 +52,7 @@ class Dungeon(commands.Cog):
         )
         embed.add_field(name=f"Würfelwurf ({ctx.author.name})", value=f"🎲 **{wurf} / 20**", inline=False)
 
-        # Auswertung nach d20-Logik
         if wurf == 1:
-            # Episches Versagen
             embed.description = (
                 "Das war der Boden. Du hast ihn gefunden.\n\n"
                 "Pommses Kommentar: *'Ich hätte ja ausgewichen, aber jeder blamiert sich eben auf seine Weise.'*"
@@ -69,32 +60,19 @@ class Dungeon(commands.Cog):
             embed.color = discord.Color.dark_red()
 
         elif 2 <= wurf <= 9:
-            # Mäßiger Erfolg / Müll-Loot
             item_name, item_wert = random.choice(trash_items)
             self.addItemToDb(user_id, item_name, "trash", item_wert)
             
             embed.description = f"Du hast Müll gefunden: **{item_name}**!"
             embed.color = discord.Color.orange()
-            
-            if "Socken" in item_name:
-                kommentar = "Ranzige Socken. Genau das, wovon jede Fritte träumt: Noch mehr Feuchtigkeit."
-            elif "Pappbecher" in item_name:
-                kommentar = "Ein feuchter Pappbecher. Der natürliche Feind jeglicher Knusprigkeit."
-            elif "Sauerteigbrot" in item_name:
-                kommentar = "Altes Brot. Wenn uns die Punkte ausgehen, können wir es immerhin noch kauen."
-            else:
-                kommentar = "Mehr Müll für deine Sammlung. Ich bin tief beeindruckt."
-            
-            embed.add_field(name="Pommses Kommentar", value=f"*{kommentar}*", inline=False)
+            embed.add_field(name="Pommses Kommentar", value="*'Mehr Müll für deine Sammlung. Ich bin tief beeindruckt.'*", inline=False)
 
         elif 10 <= wurf <= 18:
-            # Guter Erfolg
             embed.description = "Du hast den Raum gesäubert und ein paar Knusper-Reste eingesammelt!"
             embed.color = discord.Color.blue()
             embed.add_field(name="Pommses Kommentar", value="*'Das war überraschend kompetent. Vergiss nicht zu atmen.'*", inline=False)
 
         else:
-            # Natürliche 20 (Epischer Pet-Loot)
             item_name, item_wert = random.choice(pet_gear_items)
             self.addItemToDb(user_id, item_name, "pet_gear", item_wert)
             
