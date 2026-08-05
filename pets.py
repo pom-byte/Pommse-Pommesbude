@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import random
+from datetime import datetime, timezone
 from database import get_db_connection
 
 class Pets(commands.Cog):
@@ -18,8 +19,13 @@ class Pets(commands.Cog):
                     pet_name TEXT,
                     hunger INT DEFAULT 100,
                     level INT DEFAULT 1,
-                    accessoires TEXT DEFAULT 'Keine'
+                    accessoires TEXT DEFAULT 'Keine',
+                    last_fed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
+            """)
+            # Falls die Spalte 'last_fed' bei älteren Datenbanken noch fehlt, fügen wir sie sicherheitshalber hinzu:
+            cur.execute("""
+                ALTER TABLE user_pets ADD COLUMN IF NOT EXISTS last_fed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_punkte (
@@ -41,9 +47,6 @@ class Pets(commands.Cog):
                     item_name TEXT,
                     wert INT DEFAULT 15
                 );
-            """)
-            cur.execute("""
-                ALTER TABLE user_inventory ADD COLUMN IF NOT EXISTS wert INT DEFAULT 15;
             """)
             conn.commit()
             cur.close()
@@ -104,7 +107,7 @@ class Pets(commands.Cog):
 
         if item_name == "spezialfutter":
             cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (preis, user_id))
-            cur.execute("UPDATE user_pets SET hunger = LEAST(100, hunger + 50) WHERE user_id = %s;", (user_id,))
+            cur.execute("UPDATE user_pets SET hunger = LEAST(100, hunger + 50), last_fed = CURRENT_TIMESTAMP WHERE user_id = %s;", (user_id,))
             conn.commit()
             cur.close()
             conn.close()
@@ -147,7 +150,7 @@ class Pets(commands.Cog):
                     "Frittierter Hering": 30,
                     "Knusper-Lachs": 60,
                     "Garnierte Garnele": 100,
-                    "Goldener Knusper-Karpfen": "300"
+                    "Goldener Knusper-Karpfen": 300
                 }
                 
                 for fisch_name, anzahl in fische:
@@ -188,26 +191,69 @@ class Pets(commands.Cog):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        cur.execute("SELECT pet_name, hunger, level, accessoires FROM user_pets WHERE user_id = %s;", (user_id,))
+        cur.execute("SELECT pet_name, hunger, level, accessoires, last_fed FROM user_pets WHERE user_id = %s;", (user_id,))
         row = cur.fetchone()
         
+        now = datetime.now(timezone.utc)
+
         if not row:
             zufalls_name = random.choice(self.ZUFALLS_NAMEN)
-            cur.execute("INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires) VALUES (%s, %s, 100, 1, 'Keine') ON CONFLICT (user_id) DO NOTHING;", (user_id, zufalls_name))
+            cur.execute("""
+                INSERT INTO user_pets (user_id, pet_name, hunger, level, accessoires, last_fed) 
+                VALUES (%s, %s, 100, 1, 'Keine', %s) 
+                ON CONFLICT (user_id) DO NOTHING;
+            """, (user_id, zufalls_name, now))
             conn.commit()
             pet_name, hunger, level, accessoires = zufalls_name, 100, 1, "Keine"
         else:
-            pet_name, hunger, level, accessoires = row[0], row[1], row[2], row[3]
+            pet_name, old_hunger, level, accessoires, last_fed = row[0], row[1], row[2], row[3], row[4]
             
+            # Zeitzonen-Sicherheit für Python-Vergleich
+            if last_fed.tzinfo is None:
+                last_fed = last_fed.replace(tzinfo=timezone.utc)
+            
+            # Berechne vergangene Stunden seit dem letzten Füttern
+            vergangene_stunden = int((now - last_fed).total_seconds() // 3600)
+            
+            if vergangene_stunden > 0:
+                # Pro Stunde 2 Hungerpunkte Abzug
+                hunger = max(0, old_hunger - (vergangene_stunden * 2))
+                
+                # Aktualisiere den neuen Hungerwert und setze den Zeitstempel um die verstrichenen Stunden fort, 
+                # damit die Zeit linear weiterzählt.
+                cur.execute("""
+                    UPDATE user_pets 
+                    SET hunger = %s, last_fed = last_fed + make_interval(hours => %s) 
+                    WHERE user_id = %s;
+                """, (hunger, vergangene_stunden, user_id))
+                conn.commit()
+            else:
+                hunger = old_hunger
+
         cur.close()
         conn.close()
 
+        # Liebevolle Status- und Stimmungs-Texte je nach Hunger
+        if hunger > 75:
+            status_text = "Pappsatt & glücklich 🥰"
+            kommentar = "*{0} schaut dich mit großen, zufriedenen Kulleraugen an und knuspert leise vor sich hin.*"
+        elif hunger > 40:
+            status_text = "Mäßig knusprig 🙂"
+            kommentar = "*{0} fängt an leicht zu bröseln. Ein kleiner Snack wäre bald mal wieder nett!*"
+        elif hunger > 15:
+            status_text = "Hst Hunger! 🥺"
+            kommentar = "*{0} zieht einen Schmollmund. Der Magen knurrt lauter als die Friteuse!*"
+        else:
+            status_text = "⚠️ AM VERHUNGERN!"
+            kommentar = "*{0} droht zu Staub zu zerfallen! Füttere es sofort mit `!fuettern`, bevor es einknickt!*"
+
         embed = discord.Embed(title=f"🐾 Knusper-Pet von {ctx.author.name}", color=discord.Color.orange())
-        embed.add_field(name="Name", value=pet_name, inline=False)
-        embed.add_field(name="Hunger", value=f"{'🍟' * max(0, (hunger // 20))} ({hunger}/100)", inline=False)
-        embed.add_field(name="Level", value=str(level), inline=True)
-        embed.add_field(name="Ausstattung", value=accessoires, inline=True)
-        embed.set_footer(text="Füttere mit !fuettern oder öffne den Shop mit !menue!")
+        embed.add_field(name="Name", value=f"**{pet_name}**", inline=False)
+        embed.add_field(name="Zustand & Hunger", value=f"{'🍟' * max(1, (hunger // 20))} ({hunger}/100)\n*Status: {status_text}*", inline=False)
+        embed.add_field(name="Level", value=f"⭐ Stufe {level}", inline=True)
+        embed.add_field(name="Glanz & Ausstattung", value=f"✨ {accessoires}", inline=True)
+        embed.add_field(name="Pommses Liebeserklärung", value=kommentar.format(pet_name), inline=False)
+        embed.set_footer(text="Tippe !fuettern um dein Pet zu versorgen oder !menue für den Shop!")
         
         await ctx.send(embed=embed)
 
@@ -235,7 +281,7 @@ class Pets(commands.Cog):
         nuevo_hunger = min(100, hunger + 25)
 
         cur.execute("UPDATE user_punkte SET punkte = punkte - %s WHERE user_id = %s;", (futter_kosten, user_id))
-        cur.execute("UPDATE user_pets SET hunger = %s WHERE user_id = %s;", (nuevo_hunger, user_id))
+        cur.execute("UPDATE user_pets SET hunger = %s, last_fed = CURRENT_TIMESTAMP WHERE user_id = %s;", (nuevo_hunger, user_id))
 
         conn.commit()
         cur.close()
